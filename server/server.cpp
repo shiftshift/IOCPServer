@@ -15,7 +15,7 @@ enum class IO_OPERATION
 };
 
 struct IO_DATA
-{//���ֶΣ�����ΪOVERLAPPED
+{//首字段，必须为OVERLAPPED
 	OVERLAPPED Overlapped;
 	IO_OPERATION opCode;
 	SOCKET client;
@@ -47,7 +47,8 @@ DWORD WINAPI WorkerThread(LPVOID context)
 			delete lpIOContext;
 			continue;
 		}
-		cout << "client=" << dec << lpIOContext->client << endl;
+		//cout << "client=" << hex << lpIOContext->client << endl;
+		cout << "dwThreadId=" << dec << GetCurrentThreadId() << endl;
 		if (lpIOContext->opCode == IO_OPERATION::IO_READ)
 		{// a read operation complete
 			cout << "Client IO_READ" << endl;
@@ -132,7 +133,7 @@ int main()
 	}
 	SOCKET hSocket = WSASocket(AF_INET, SOCK_STREAM,
 		IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
-	cout << "WSASocket() hSocket=" << hSocket << endl;
+	cout << "WSASocket() hSocket=" << hex << hSocket << endl;
 
 	sockaddr_in server;
 	server.sin_family = AF_INET;
@@ -160,10 +161,10 @@ int main()
 		}
 	}
 
-	while (true)
+	while (hSocket)
 	{
 		SOCKET hClient = accept(hSocket, NULL, NULL);
-		cout << "accept() hClient=" << hClient << endl;
+		cout << "accept() hClient=" << hex << hClient << endl;
 		HANDLE hIocpTemp = CreateIoCompletionPort((HANDLE)hClient, 
 			g_hIOCP, hClient, 0); //dwNumberOfConcurrentThreads
 		cout << "CreateIOCP() hIocpTemp=" << hex << hIocpTemp << endl;
@@ -173,6 +174,7 @@ int main()
 			cout << "Bind Socket2IOCP Failed! nErr=" << nErr << endl;
 			nRet = closesocket(hClient);
 			cout << "closesocket() nRet=" << nRet << endl;
+			break; //不退出，会一直失败
 		}
 		else
 		{ //post a recv request
