@@ -23,7 +23,7 @@ int main()
 	server.sin_port = htons(6000);
 	server.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
 	SOCKET hSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	cout << "socket() hSocket=" << hSocket << endl;
+	cout << "socket() hSocket=" << hex << hSocket << endl;
 	nRet = connect(hSocket, (sockaddr*)&server, sizeof(server));
 	cout << "connect() nRet=" << nRet << endl;
 	if (nRet < 0) 
@@ -48,7 +48,7 @@ int main()
 			cout << "recv nothing!" << endl;
 		}
 		cout << g_buffer << endl;
-		Sleep(10000);
+		Sleep(1000);
 	}
 
 	nRet = closesocket(hSocket);

@@ -1,4 +1,4 @@
-//https://www.cnblogs.com/xiaobingqianrui/p/9258665.html
+﻿//https://www.cnblogs.com/xiaobingqianrui/p/9258665.html
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include <winsock2.h>
 #include <windows.h>
