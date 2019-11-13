@@ -9,27 +9,20 @@ Revised by GaoJS at 2019/11
 ==========================================================================*/
 #pragma once
 #include <WinSock2.h>
-#include <Windows.h>
 #include <MSWSock.h>
+#include <Windows.h>
 #include <vector>
 #include <list>
 #include <string>
-#include <atlstr.h>
-#include <atltime.h>
-#include <locale.h>
-//使用系统安全字符串函数支持
-#include <strsafe.h>
-//使用ATL的字符集转换支持
-#include <atlconv.h>
 
 using std::list;
 using std::vector;
 using std::wstring;
 
 #define BUFF_SIZE (1024*4) // I/O 请求的缓冲区大小
-#define WORKER_THREADS_PER_PROCESSOR (2) // 每个处理器上的线程数
-#define INIT_IOCONTEXT_NUM (100) // IOContextPool中的初始数量
-#define MAX_POST_ACCEPT (10) // 同时投递的Accept数量
+#define WORKER_THREADS_PER_PROCESSOR (1) // 每个处理器上的线程数
+#define INIT_IOCONTEXT_NUM (3) // IOContextPool中的初始数量
+#define MAX_POST_ACCEPT (2) // 同时投递的Accept数量
 #define EXIT_CODE	(-1) // 传递给Worker线程的退出信号
 #define DEFAULT_PORT	(10240) // 默认端口
 
@@ -43,8 +36,8 @@ using std::wstring;
 	 { closesocket(x); x = INVALID_SOCKET; }}
 
 #ifndef TRACE
-#include <atltrace.h>
 #define TRACE wprintf
+//#include <atltrace.h>
 //#define TRACE AtlTrace
 #endif
 
@@ -56,6 +49,9 @@ enum class IOTYPE
 	RECV, // 投递Recv操作
 };
 
+//每投递网络IO请求，都要求提供一个WSABuf和WSAOVERLAPPED的参数，
+//所以，我们自定义一个IOContext类，每次投递附带这个类的变量，
+//但要注意这个变量的生命周期，防止内存泄漏。
 class IoContext
 {
 public:
@@ -64,21 +60,21 @@ public:
 	SOCKET hSocket; // 此IO操作对应的socket
 	WSABUF wsaBuf; // 数据缓冲
 	IOTYPE ioType; // IO操作类型
-	UINT connectID; // 连接ID
 
 	IoContext()
 	{
+		TRACE(L"IoContext()\n");
 		hSocket = INVALID_SOCKET;
 		ZeroMemory(&overLapped, sizeof(overLapped));
 		wsaBuf.buf = (char*)HeapAlloc(GetProcessHeap(),
 			HEAP_ZERO_MEMORY, BUFF_SIZE);
 		wsaBuf.len = BUFF_SIZE;
 		ioType = IOTYPE::UNKNOWN;
-		connectID = 0;
 	}
 
 	~IoContext()
 	{
+		TRACE(L"~IoContext()\n");
 		RELEASE_SOCKET(hSocket);
 		if (wsaBuf.buf != NULL)
 		{
@@ -88,6 +84,7 @@ public:
 
 	void Reset()
 	{
+		TRACE(L"Reset()\n");
 		if (wsaBuf.buf != NULL)
 		{
 			ZeroMemory(wsaBuf.buf, BUFF_SIZE);
@@ -99,11 +96,11 @@ public:
 		}
 		ZeroMemory(&overLapped, sizeof(overLapped));
 		ioType = IOTYPE::UNKNOWN;
-		connectID = 0;
 	}
 };
 
-// 空闲的IOContext管理类(IOContext池)
+// 对于每一个socket也定义了一个IOContextPool的缓冲池类
+// 空闲的IoContext管理类(IoContext池)
 class IoContextPool
 {
 private:
@@ -113,6 +110,7 @@ private:
 public:
 	IoContextPool()
 	{
+		TRACE(L"IoContextPool()\n");
 		InitializeCriticalSection(&csLock);
 		contextList.clear();
 		EnterCriticalSection(&csLock);
@@ -126,6 +124,7 @@ public:
 
 	~IoContextPool()
 	{
+		TRACE(L"~IoContextPool()\n");
 		EnterCriticalSection(&csLock);
 		for (list<IoContext*>::iterator it = contextList.begin();
 			it != contextList.end(); it++)
@@ -140,6 +139,7 @@ public:
 	// 分配一个IOContxt
 	IoContext* AllocateIoContext()
 	{
+		TRACE(L"AllocateIoContext()\n");
 		IoContext* context = NULL;
 		EnterCriticalSection(&csLock);
 		if (contextList.size() > 0)
@@ -147,8 +147,8 @@ public:
 			context = contextList.back();
 			contextList.pop_back();
 		}
-		else	//list为空，新建一个
-		{
+		else
+		{//list为空，新建一个
 			context = new IoContext;
 		}
 		LeaveCriticalSection(&csLock);
@@ -158,6 +158,7 @@ public:
 	// 回收一个IOContxt
 	void ReleaseIoContext(IoContext* pContext)
 	{
+		TRACE(L"ReleaseIoContext()\n");
 		pContext->Reset();
 		EnterCriticalSection(&csLock);
 		contextList.push_front(pContext);
@@ -165,6 +166,7 @@ public:
 	}
 };
 
+// 对于每一个socket也定义了一个SocketContext的类
 class SocketContext
 {
 public:
@@ -179,14 +181,16 @@ private:
 public:
 	SocketContext()
 	{
-		InitializeCriticalSection(&csLock);
-		arrIoContext.clear();
+		TRACE(L"SocketContext()\n");
 		connSocket = INVALID_SOCKET;
 		ZeroMemory(&clientAddr, sizeof(clientAddr));
+		InitializeCriticalSection(&csLock);
+		arrIoContext.clear();
 	}
 
 	~SocketContext()
 	{
+		TRACE(L"~SocketContext()\n");
 		RELEASE_SOCKET(connSocket);
 		// 回收所有的IOContext
 		for (vector<IoContext*>::iterator it = arrIoContext.begin();
@@ -203,6 +207,7 @@ public:
 	// 获取一个新的IoContext
 	IoContext* GetNewIoContext()
 	{
+		TRACE(L"GetNewIoContext()\n");
 		IoContext* context = ioContextPool.AllocateIoContext();
 		if (context != NULL)
 		{
@@ -216,6 +221,7 @@ public:
 	// 从数组中移除一个指定的IoContext
 	void RemoveContext(IoContext* pContext)
 	{
+		TRACE(L"RemoveContext()\n");
 		for (vector<IoContext*>::iterator it = arrIoContext.begin();
 			it != arrIoContext.end(); it++)
 		{
@@ -239,8 +245,7 @@ public:
 	~CIocpBase();
 
 	// 开始服务
-	BOOL Start(int port = DEFAULT_PORT, int maxConnection = 2000,
-		int maxIOContextInPool = 256, int maxSocketContextInPool = 200);
+	BOOL Start(int port = DEFAULT_PORT);
 
 	// 停止服务
 	void Stop();
