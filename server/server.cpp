@@ -15,9 +15,9 @@ enum class IO_OPERATION
 };
 
 struct IO_DATA
-{//首字段，必须为OVERLAPPED
-	OVERLAPPED Overlapped;
+{//可以使用CONTAINING_RECORD，将OVERLAPPED转IO_DATA
 	IO_OPERATION opCode;
+	OVERLAPPED Overlapped;
 	SOCKET client;
 	WSABUF wsabuf;
 	int nBytes;
@@ -38,7 +38,7 @@ DWORD WINAPI WorkerThread(LPVOID context)
 			(LPDWORD)&lpCompletionKey, (LPOVERLAPPED*)&lpOverlapped, INFINITE);
 		cout << "GetQueuedCompletionStatus() bRet=" << bRet;
 		cout << ", dwIoSize=" << dwIoSize << ", Key=" << lpCompletionKey << endl;
-		IO_DATA* lpIOContext = (IO_DATA*)lpOverlapped;
+		IO_DATA* lpIOContext = CONTAINING_RECORD(lpOverlapped, IO_DATA, Overlapped);
 		if (dwIoSize == 0)
 		{
 			cout << "Client disconnect" << endl;
@@ -49,6 +49,7 @@ DWORD WINAPI WorkerThread(LPVOID context)
 		}
 		//cout << "client=" << hex << lpIOContext->client << endl;
 		cout << "dwThreadId=" << dec << GetCurrentThreadId() << endl;
+		cout << "opCode=" << hex << (int)lpIOContext->opCode << endl;
 		if (lpIOContext->opCode == IO_OPERATION::IO_READ)
 		{// a read operation complete
 			cout << "Client IO_READ" << endl;
@@ -62,7 +63,7 @@ DWORD WINAPI WorkerThread(LPVOID context)
 			DWORD nBytes = strlen(g_buffer) + 1;
 			int nRet = WSASend(lpIOContext->client,
 				&lpIOContext->wsabuf, 1, &nBytes,
-				dwFlags, (OVERLAPPED*)lpIOContext, NULL);
+				dwFlags, &(lpIOContext->Overlapped), NULL);
 			if (nRet == SOCKET_ERROR)
 			{
 				int nErr = WSAGetLastError();
@@ -91,7 +92,7 @@ DWORD WINAPI WorkerThread(LPVOID context)
 				sizeof(lpIOContext->Overlapped));
 			int nRet = WSARecv(lpIOContext->client,
 				&lpIOContext->wsabuf, 1, &nBytes,
-				&dwFlags, &lpIOContext->Overlapped, NULL);
+				&dwFlags, &(lpIOContext->Overlapped), NULL);
 			if (nRet == SOCKET_ERROR)
 			{
 				int nErr = WSAGetLastError();
@@ -147,7 +148,6 @@ int main()
 	g_hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE,
 		NULL, 0, nThreadCount); //dwCompletionKey, 0)
 	cout << "CreateIOCP() hIOCP=" << hex << g_hIOCP << endl;
-	//CreateIoCompletionPort((HANDLE)m_socket,g_hIOCP,0,0);
 	for (int i = 0; i < nThreadCount; ++i)
 	{
 		HANDLE hThread = 0;
@@ -189,7 +189,7 @@ int main()
 			data->client = hClient;
 			DWORD nBytes = sizeof(g_buffer), dwFlags = 0;
 			int nRet = WSARecv(hClient, &data->wsabuf, 1,
-				&nBytes, &dwFlags, (OVERLAPPED*)data, NULL);
+				&nBytes, &dwFlags, &(data->Overlapped), NULL);
 			if (nRet == SOCKET_ERROR)
 			{
 				int nErr = WSAGetLastError();
