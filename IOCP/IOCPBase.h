@@ -112,8 +112,8 @@ public:
 	{
 		TRACE(L"IoContextPool()\n");
 		InitializeCriticalSection(&csLock);
-		contextList.clear();
 		EnterCriticalSection(&csLock);
+		contextList.clear();
 		for (size_t i = 0; i < INIT_IOCONTEXT_NUM; i++)
 		{
 			IoContext* context = new IoContext;
