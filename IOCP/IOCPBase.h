@@ -193,13 +193,16 @@ public:
 		TRACE(L"~SocketContext()\n");
 		RELEASE_SOCKET(connSocket);
 		// 回收所有的IOContext
-		for (vector<IoContext*>::iterator it = arrIoContext.begin();
-			it != arrIoContext.end(); it++)
-		{
-			ioContextPool.ReleaseIoContext(*it);
-		}
 		EnterCriticalSection(&csLock);
-		arrIoContext.clear();
+		if (arrIoContext.size() > 0)
+		{
+			for (vector<IoContext*>::iterator it = arrIoContext.begin();
+				it != arrIoContext.end(); it++)
+			{
+				ioContextPool.ReleaseIoContext(*it);
+			}
+			arrIoContext.clear();
+		}
 		LeaveCriticalSection(&csLock);
 		DeleteCriticalSection(&csLock);
 	}

@@ -369,9 +369,12 @@ BOOL CIocpBase::DoSend(SocketContext*& sockContext, IoContext*& ioContext)
 
 BOOL CIocpBase::DoClose(SocketContext*& sockContext)
 {
-	TRACE(L"DoClose(): s=%p\n", sockContext);
-	InterlockedDecrement(&connectCount);
-	RELEASE_POINTER(sockContext);
+	if (sockContext != NULL)
+	{
+		TRACE(L"DoClose(): s=%p\n", sockContext);
+		InterlockedDecrement(&connectCount);
+		RELEASE_POINTER(sockContext);
+	}
 	return true;
 }
 
