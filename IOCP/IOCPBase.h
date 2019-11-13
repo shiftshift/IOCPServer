@@ -44,14 +44,8 @@ using std::wstring;
 
 #ifndef TRACE
 #include <atltrace.h>
-
-#define TRACE AtlTrace
-#define TRACE0(f) TRACE(f)
-#define TRACE1(f, p1) TRACE(f, p1)
-#define TRACE2(f, p1, p2) TRACE(f, p1, p2)
-#define TRACE3(f, p1, p2, p3) TRACE(f, p1, p2, p3)
-#define TRACE4(f, p1, p2, p3, p4) TRACE(f, p1, p2, p3, p4)
-#define TRACE5(f, p1, p2, p3, p4, p5)	TRACE(f, p1, p2, p3, p4, p5)
+#define TRACE wprintf
+//#define TRACE AtlTrace
 #endif
 
 enum class IOTYPE
@@ -288,7 +282,7 @@ protected:
 
 private:
 	// 工作线程函数
-	static DWORD WINAPI WorkerThreadProc(LPVOID lpParam);
+	static DWORD WINAPI WorkerThreadProc(LPVOID pThiz);
 
 	// 初始化IOCP
 	BOOL InitializeIocp();

@@ -6,7 +6,7 @@
 
 IoContextPool SocketContext::ioContextPool;		// 初始化
 
-CIocpBase::CIocpBase() :
+CIocpBase::CIocpBase():
 	completionPort(INVALID_HANDLE_VALUE),
 	listenSockContext(NULL),
 	workerThreads(NULL),
@@ -17,6 +17,7 @@ CIocpBase::CIocpBase() :
 	acceptPostCount(0),
 	connectCount(0)
 {
+	TRACE(L"CIocpBase()\n");
 	WSADATA wsaData = { 0 };
 	int nRet = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (NO_ERROR != nRet)
@@ -28,6 +29,7 @@ CIocpBase::CIocpBase() :
 
 CIocpBase::~CIocpBase()
 {
+	TRACE(L"~CIocpBase()\n");
 	RELEASE_HANDLE(stopEvent);
 	this->Stop();
 	WSACleanup();
@@ -36,6 +38,7 @@ CIocpBase::~CIocpBase()
 BOOL CIocpBase::Start(int port, int maxConnection,
 	int maxIoContextInPool, int maxSocketContextInPool)
 {
+	TRACE(L"Start()\n");
 	if (!InitializeIocp())
 	{
 		return false;
@@ -50,6 +53,7 @@ BOOL CIocpBase::Start(int port, int maxConnection,
 
 void CIocpBase::Stop()
 {
+	TRACE(L"Stop()\n");
 	if (listenSockContext != NULL
 		&& listenSockContext->connSocket != INVALID_SOCKET)
 	{
@@ -76,6 +80,7 @@ BOOL CIocpBase::SendData(SocketContext* socketContext, char* data, int size)
 
 BOOL CIocpBase::InitializeIocp()
 {
+	TRACE(L"InitializeIocp()\n");
 	workerThreadNum = WORKER_THREADS_PER_PROCESSOR * GetNumOfProcessors();
 	completionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE,
 		NULL, 0, workerThreadNum); //创建完成端口
@@ -88,13 +93,14 @@ BOOL CIocpBase::InitializeIocp()
 	for (int i = 0; i < workerThreadNum; i++)
 	{
 		workerThreads[i] = CreateThread(0, 0,
-			WorkerThreadProc, (void*)this, 0, 0);
+			WorkerThreadProc, (LPVOID)this, 0, 0);
 	}
 	return true;
 }
 
 BOOL CIocpBase::InitializeListenSocket()
 {
+	TRACE(L"InitializeListenSocket()\n");
 	// 生成用于监听的socket的Context
 	listenSockContext = new SocketContext;
 	listenSockContext->connSocket = WSASocket(AF_INET, SOCK_STREAM,
@@ -165,6 +171,7 @@ BOOL CIocpBase::InitializeListenSocket()
 
 void CIocpBase::DeInitialize()
 {
+	TRACE(L"DeInitialize()\n");
 	// 关闭系统退出事件句柄
 	RELEASE_HANDLE(stopEvent);
 	// 释放工作者线程句柄指针
@@ -216,6 +223,7 @@ BOOL CIocpBase::AssociateWithIocp(SocketContext* sockContext)
 
 BOOL CIocpBase::PostAccept(SocketContext*& sockContext, IoContext*& ioContext)
 {
+	TRACE(L"PostAccept(): %p %p\n", sockContext, ioContext);
 	DWORD dwBytes = 0;
 	ioContext->ioType = IOTYPE::ACCEPT;
 	ioContext->hSocket = WSASocket(AF_INET, SOCK_STREAM,
@@ -241,6 +249,7 @@ BOOL CIocpBase::PostAccept(SocketContext*& sockContext, IoContext*& ioContext)
 
 BOOL CIocpBase::PostRecv(SocketContext*& sockContext, IoContext*& ioContext)
 {
+	TRACE(L"PostRecv(): %p %p\n", sockContext, ioContext);
 	ioContext->Reset();
 	ioContext->ioType = IOTYPE::RECV;
 	DWORD dwFlags = 0, dwBytes = 0;
@@ -257,6 +266,7 @@ BOOL CIocpBase::PostRecv(SocketContext*& sockContext, IoContext*& ioContext)
 
 BOOL CIocpBase::PostSend(SocketContext*& sockContext, IoContext*& ioContext)
 {
+	TRACE(L"PostSend(): %p %p\n", sockContext, ioContext);
 	ioContext->ioType = IOTYPE::SEND;
 	DWORD dwBytes = 0, dwFlags = 0;
 	int nRet = WSASend(ioContext->hSocket, &ioContext->wsaBuf, 1,
@@ -271,6 +281,7 @@ BOOL CIocpBase::PostSend(SocketContext*& sockContext, IoContext*& ioContext)
 
 BOOL CIocpBase::DoAccept(SocketContext*& sockContext, IoContext*& ioContext)
 {
+	TRACE(L"DoAccept(): %p %p\n", sockContext, ioContext);
 	InterlockedIncrement(&connectCount);
 	InterlockedDecrement(&acceptPostCount);
 	SOCKADDR_IN* clientAddr = NULL;
@@ -320,7 +331,7 @@ BOOL CIocpBase::DoAccept(SocketContext*& sockContext, IoContext*& ioContext)
 		SIO_KEEPALIVE_VALS, &alive_in, sizeof(alive_in), &alive_out,
 		sizeof(alive_out), &ulBytesReturn, NULL, NULL))
 	{
-		TRACE(L"WSAIoctl failed: %d/n", WSAGetLastError());
+		TRACE(L"WSAIoctl() failed: %d\n", WSAGetLastError());
 	}
 	OnConnectionAccepted(newSockContext);
 
@@ -334,11 +345,13 @@ BOOL CIocpBase::DoAccept(SocketContext*& sockContext, IoContext*& ioContext)
 		DoClose(sockContext);
 		return false;
 	}
+
 	return true;
 }
 
 BOOL CIocpBase::DoRecv(SocketContext*& sockContext, IoContext*& ioContext)
 {
+	TRACE(L"DoRecv(): %p %p\n", sockContext, ioContext);
 	OnRecvCompleted(sockContext, ioContext);
 	ioContext->Reset();
 	if (!PostRecv(sockContext, ioContext))
@@ -351,25 +364,28 @@ BOOL CIocpBase::DoRecv(SocketContext*& sockContext, IoContext*& ioContext)
 
 BOOL CIocpBase::DoSend(SocketContext*& sockContext, IoContext*& ioContext)
 {
+	TRACE(L"DoSend(): %p %p\n", sockContext, ioContext);
 	OnSendCompleted(sockContext, ioContext);
 	return 0;
 }
 
 BOOL CIocpBase::DoClose(SocketContext*& sockContext)
 {
+	TRACE(L"DoClose(): %p\n", sockContext);
 	InterlockedDecrement(&connectCount);
 	RELEASE_POINTER(sockContext);
 	return true;
 }
 
-DWORD CIocpBase::WorkerThreadProc(LPVOID lpParam)
+DWORD CIocpBase::WorkerThreadProc(LPVOID pThiz)
 {
-	CIocpBase* iocp = (CIocpBase*)lpParam;
+	CIocpBase* iocp = (CIocpBase*)pThiz;
 	SocketContext* sockContext = NULL;
 	IoContext* ioContext = NULL;
 	OVERLAPPED* ol = NULL;
 	DWORD dwBytes = 0;
 
+	TRACE(L"WorkerThreadProc(): %p\n", pThiz);
 	while (WAIT_OBJECT_0 != WaitForSingleObject(iocp->stopEvent, 0))
 	{
 		BOOL bRet = GetQueuedCompletionStatus(iocp->completionPort,
@@ -446,6 +462,6 @@ DWORD CIocpBase::WorkerThreadProc(LPVOID lpParam)
 	}
 
 	// 释放线程参数
-	RELEASE_POINTER(lpParam);
+	RELEASE_POINTER(pThiz);
 	return 0;
 }
