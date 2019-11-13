@@ -1,4 +1,5 @@
-﻿#define _WINSOCK_DEPRECATED_NO_WARNINGS
+﻿//ErrCode:https://blog.csdn.net/ice197983/article/details/614451
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
 #include <WinSock2.h>
 #include <iostream>
@@ -40,12 +41,20 @@ int main()
 		strcpy(g_buffer, "hello");
 		nRet = send(hSocket, g_buffer, strlen(g_buffer) + 1, 0);
 		cout << "send() nRet=" << nRet << endl;
+		if (nRet == SOCKET_ERROR)
+		{//10054 0x2746 远程主机强迫关闭了一个现有的连接。 
+			int nErr = WSAGetLastError();
+			cout << "SOCKET_ERROR:" << dec << nErr << endl;
+			break;
+		}
 		memset(g_buffer, NULL, sizeof(g_buffer));
 		int nRet = recv(hSocket, g_buffer, 1024, 0);
 		cout << "recv() nRet=" << nRet << endl;
-		if (nRet == 0)
+		if (nRet == SOCKET_ERROR)
 		{
-			cout << "recv nothing!" << endl;
+			int nErr = WSAGetLastError();
+			cout << "SOCKET_ERROR:" << dec << nErr << endl;
+			break;
 		}
 		cout << g_buffer << endl;
 		Sleep(1000);
@@ -55,5 +64,6 @@ int main()
 	cout << "closesocket() nRet=" << nRet << endl;
 	nRet = WSACleanup();
 	cout << "WSACleanup() nRet=" << nRet << endl;
+	system("pause");
 	return 0;
 }

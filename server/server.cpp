@@ -208,5 +208,6 @@ int main()
 	cout << "closesocket() nRet=" << nRet << endl;
 	nRet = WSACleanup();
 	cout << "WSACleanup() nRet=" << nRet << endl;
+	system("pause");
 	return 0;
 }
