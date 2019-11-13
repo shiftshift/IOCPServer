@@ -21,7 +21,7 @@
     <ClInclude Include="targetver.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="IOCPBase.h">
+    <ClInclude Include="IocpBase.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
@@ -29,10 +29,10 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="IOCPMain.cpp">
+    <ClCompile Include="IocpBase.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="IOCPBase.cpp">
+    <ClCompile Include="IocpMain.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
