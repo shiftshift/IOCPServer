@@ -8,15 +8,14 @@ IoContextPool SocketContext::ioContextPool;		// 初始化
 
 CIocpBase::CIocpBase() :
 	completionPort(INVALID_HANDLE_VALUE),
+	listenSockContext(NULL),
 	workerThreads(NULL),
 	workerThreadNum(0),
-	IP(L"127.0.0.1"),
-	port(10240),
-	listenSockContext(NULL),
+	port(DEFAULT_PORT),
 	fnAcceptEx(NULL),
 	fnGetAcceptExSockAddrs(NULL),
-	connectCount(0),
-	acceptPostCount(0)
+	acceptPostCount(0),
+	connectCount(0)
 {
 	WSADATA wsaData = { 0 };
 	int nRet = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -34,8 +33,8 @@ CIocpBase::~CIocpBase()
 	WSACleanup();
 }
 
-BOOL CIocpBase::Start(int port, int maxConn,
-	int maxIOContextInPool, int maxSocketContextInPool)
+BOOL CIocpBase::Start(int port, int maxConnection,
+	int maxIoContextInPool, int maxSocketContextInPool)
 {
 	if (!InitializeIocp())
 	{
@@ -72,7 +71,7 @@ void CIocpBase::Stop()
 
 BOOL CIocpBase::SendData(SocketContext* socketContext, char* data, int size)
 {
-	return 0;
+	return false;
 }
 
 BOOL CIocpBase::InitializeIocp()
@@ -107,7 +106,7 @@ BOOL CIocpBase::InitializeListenSocket()
 	}
 	// 将connSocket绑定到完成端口中
 	if (NULL == CreateIoCompletionPort((HANDLE)listenSockContext->connSocket,
-		completionPort, (DWORD)listenSockContext, 0))
+		completionPort, (DWORD)listenSockContext, 0)) //dwNumberOfConcurrentThreads
 	{
 		int nErr = GetLastError();
 		return false;
@@ -206,7 +205,7 @@ BOOL CIocpBase::AssociateWithIocp(SocketContext* sockContext)
 {
 	// 将用于和客户端通信的SOCKET绑定到完成端口中
 	HANDLE hTemp = CreateIoCompletionPort((HANDLE)sockContext->connSocket,
-		completionPort, (DWORD)sockContext, 0);
+		completionPort, (DWORD)sockContext, 0); //dwNumberOfConcurrentThreads
 	if (NULL == hTemp)
 	{
 		int nErr = GetLastError();
@@ -298,7 +297,7 @@ BOOL CIocpBase::DoAccept(SocketContext*& sockContext, IoContext*& ioContext)
 
 	// 4. 将新socket和完成端口绑定
 	if (NULL == CreateIoCompletionPort((HANDLE)newSockContext->connSocket,
-		completionPort, (DWORD)newSockContext, 0))
+		completionPort, (DWORD)newSockContext, 0)) //dwNumberOfConcurrentThreads
 	{
 		DWORD dwErr = WSAGetLastError();
 		if (dwErr != ERROR_INVALID_PARAMETER)
@@ -323,7 +322,7 @@ BOOL CIocpBase::DoAccept(SocketContext*& sockContext, IoContext*& ioContext)
 	{
 		TRACE(L"WSAIoctl failed: %d/n", WSAGetLastError());
 	}
-	OnConnectionEstablished(newSockContext);
+	OnConnectionAccepted(newSockContext);
 
 	// 5. 建立recv操作所需的ioContext，在新连接的socket上投递recv请求
 	IoContext* newIoContext = newSockContext->GetNewIoContext();

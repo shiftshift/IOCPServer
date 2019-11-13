@@ -4,7 +4,7 @@
 	具体说明了服务器端建立完成端口、建立工作者线程、投递Recv请求、投递Accept请求的方法，
 	所有的客户端连入的Socket都需要绑定到IOCP上，所有从客户端发来的数据，都会调用回调函数。
 *用法：派生一个子类，重载回调函数
-Created by TTGuoying at 2018/02/07 16:22
+Created by TTGuoying at 2018/02
 Revised by GaoJS at 2019/11
 ==========================================================================*/
 #pragma once
@@ -31,7 +31,6 @@ using std::wstring;
 #define INIT_IOCONTEXT_NUM (100) // IOContextPool中的初始数量
 #define MAX_POST_ACCEPT (10) // 同时投递的Accept数量
 #define EXIT_CODE	(-1) // 传递给Worker线程的退出信号
-#define DEFAULT_IP	(L"127.0.0.1") // 默认IP地址
 #define DEFAULT_PORT	(10240) // 默认端口
 
 // 释放指针的宏
@@ -246,7 +245,7 @@ public:
 	~CIocpBase();
 
 	// 开始服务
-	BOOL Start(int port = 10240, int maxConn = 2000,
+	BOOL Start(int port = DEFAULT_PORT, int maxConnection = 2000,
 		int maxIOContextInPool = 256, int maxSocketContextInPool = 200);
 
 	// 停止服务
@@ -263,7 +262,7 @@ public:
 
 	// 事件通知函数(派生类重载此族函数)
 	// 新连接
-	virtual void OnConnectionEstablished(SocketContext* sockContext) = 0;
+	virtual void OnConnectionAccepted(SocketContext* sockContext) = 0;
 	// 连接关闭
 	virtual void OnConnectionClosed(SocketContext* sockContext) = 0;
 	// 连接上发生错误
@@ -278,7 +277,6 @@ protected:
 	HANDLE completionPort; // 完成端口
 	HANDLE* workerThreads; // 工作者线程的句柄指针
 	int workerThreadNum; // 工作者线程的数量
-	wstring IP; // 本地IP
 	int port; // 监听端口
 	SocketContext* listenSockContext; // 监听socket的Context
 	LONG connectCount; // 当前的连接数量
