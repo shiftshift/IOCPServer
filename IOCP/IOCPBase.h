@@ -182,10 +182,12 @@ public:
 	SocketContext()
 	{
 		TRACE(L"SocketContext()\n");
-		connSocket = INVALID_SOCKET;
-		ZeroMemory(&clientAddr, sizeof(clientAddr));
 		InitializeCriticalSection(&csLock);
-		arrIoContext.clear();
+		EnterCriticalSection(&csLock);
+		arrIoContext.clear(); //√ª”√
+		LeaveCriticalSection(&csLock);
+		ZeroMemory(&clientAddr, sizeof(clientAddr));
+		connSocket = INVALID_SOCKET;
 	}
 
 	~SocketContext()
