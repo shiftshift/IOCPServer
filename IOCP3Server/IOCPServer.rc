@@ -70,7 +70,7 @@ END
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDR_MAINFRAME           ICON                    "res\\PiggyIOCPServer.ico"
+IDR_MAINFRAME           ICON                    "res\\IOCPServer.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -199,7 +199,7 @@ END
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
 LANGUAGE 4, 2
 #pragma code_page(936)
-#include "res\PiggyIOCPServer.rc2"  // ?¡è? Microsoft Visual C++ ?¨¤¡§¡è?-|¨¬??¨¢¡§o???
+#include "res\IOCPServer.rc2"  // ?¡è? Microsoft Visual C++ ?¨¤¡§¡è?-|¨¬??¨¢¡§o???
 #include "l.CHS\afxres.rc"      // ?¨¤¡§o?¨¢??¨¢¡§|?t
 #endif
 

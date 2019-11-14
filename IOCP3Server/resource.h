@@ -1,12 +1,12 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by IOCPServer.rc
+// Used by PiggyIOCPServer.rc
 //
 #define IDC_STOP                        3
 #define IDM_ABOUTBOX                    0x0010
 #define IDD_ABOUTBOX                    100
 #define IDS_ABOUTBOX                    101
-#define IDD_IOCPSERVER_DIALOG	        102
+#define IDD_PIGGYIOCPSERVER_DIALOG      102
 #define IDR_MAINFRAME                   128
 #define IDC_LIST2                       1001
 #define IDC_LIST_INFO                   1001

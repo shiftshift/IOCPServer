@@ -1,10 +1,10 @@
-#include "../StdAfx.h"
-#include "../MainDlg.h"
+#include "StdAfx.h"
 #include "IOCPModel.h"
+#include "MainDlg.h"
 
-// 每一个处理器上产生多少个线程(为了最大限度的提升服务器性能，详见配套文档)
+// 每一个处理器上产生多少个线程
 #define WORKER_THREADS_PER_PROCESSOR 2
-// 同时投递的Accept请求的数量(这个要根据实际的情况灵活设置)
+// 同时投递的AcceptEx请求的数量
 #define MAX_POST_ACCEPT              10
 // 传递给Worker线程的退出信号
 #define EXIT_CODE                    NULL
@@ -42,12 +42,6 @@ CIOCPModel::~CIOCPModel(void)
 }
 
 
-
-
-///////////////////////////////////////////////////////////////////
-// 工作者线程：  为IOCP请求服务的工作者线程
-//         也就是每当完成端口上出现了完成数据包，就将之取出来进行处理的线程
-///////////////////////////////////////////////////////////////////
 /*********************************************************************
 *函数功能：线程函数，根据GetQueuedCompletionStatus返回情况进行处理；
 *函数参数：lpParam是THREADPARAMS_WORKER类型指针；
@@ -63,7 +57,7 @@ DWORD WINAPI CIOCPModel::_WorkerThread(LPVOID lpParam)
 	pIOCPModel->_ShowMessage("工作者线程启动，ID: %d.",nThreadNo);
 
 	OVERLAPPED           *pOverlapped = NULL;
-	SocketContext   *pSocketContext = NULL;
+	PER_SOCKET_CONTEXT   *pSocketContext = NULL;
 	DWORD                dwBytesTransfered = 0;
 
 	//循环处理请求，直到接收到Shutdown信息为止
@@ -98,10 +92,10 @@ DWORD WINAPI CIOCPModel::_WorkerThread(LPVOID lpParam)
 		else  
 		{  	
 			// 读取传入的参数
-			IoContext* pIoContext = CONTAINING_RECORD(pOverlapped, IoContext, m_Overlapped);  
+			PER_IO_CONTEXT* pIoContext = CONTAINING_RECORD(pOverlapped, PER_IO_CONTEXT, m_Overlapped);  
 
 			// 判断是否有客户端断开了
-			if((0 == dwBytesTransfered) && ( RECV==pIoContext->m_OpType || SEND==pIoContext->m_OpType))  
+			if((0 == dwBytesTransfered) && ( RECV_POSTED==pIoContext->m_OpType || SEND_POSTED==pIoContext->m_OpType))  
 			{  
 				pIOCPModel->_ShowMessage( _T("客户端 %s:%d 断开连接."),inet_ntoa(pSocketContext->m_ClientAddr.sin_addr), ntohs(pSocketContext->m_ClientAddr.sin_port) );
 
@@ -115,26 +109,22 @@ DWORD WINAPI CIOCPModel::_WorkerThread(LPVOID lpParam)
 				switch( pIoContext->m_OpType )  
 				{  
 					 // Accept  
-				case ACCEPT:
-					{ 
-						// 为了增加代码可读性，这里用专门的_DoAccept函数进行处理连入请求
+				case ACCEPT_POSTED:
+					{
 						pIoContext->m_nTotalBytes = dwBytesTransfered;
-						pIOCPModel->_DoAccpet( pSocketContext, pIoContext );	
+						pIOCPModel->_DoAccpet( pSocketContext, pIoContext);						
 					}
 					break;
 
 					// RECV
-				case RECV:
+				case RECV_POSTED:
 					{
-						// 为了增加代码可读性，这里用专门的_DoRecv函数进行处理接收请求
 						pIoContext->m_nTotalBytes	= dwBytesTransfered;
 						pIOCPModel->_DoRecv( pSocketContext,pIoContext );
 					}
 					break;
 
-					// SEND
-					// 这里略过不写了，要不代码太多了，不容易理解，Send操作相对来讲简单一些
-				case SEND:
+				case SEND_POSTED:
 					{
 						pIoContext->m_nSendBytes += dwBytesTransfered;
 						if (pIoContext->m_nSendBytes < pIoContext->m_nTotalBytes)
@@ -168,19 +158,6 @@ DWORD WINAPI CIOCPModel::_WorkerThread(LPVOID lpParam)
 	return 0;
 }
 
-
-
-//====================================================================================
-//
-//				    系统初始化和终止
-//
-//====================================================================================
-
-
-
-
-////////////////////////////////////////////////////////////////////
-// 初始化WinSock 2.2
 //函数功能：初始化套接字
 bool CIOCPModel::LoadSocketLib()
 {    
@@ -270,7 +247,7 @@ void CIOCPModel::Stop()
 *函数参数：
 PER_IO_CONTEXT* pIoContext:	用于进行IO的套接字上的结构，主要为WSARecv参数和WSASend参数；
 **************************************************************/
-bool CIOCPModel::PostRecv( IoContext* pIoContext )
+bool CIOCPModel::PostRecv( PER_IO_CONTEXT* pIoContext )
 {
 	// 初始化变量
 	DWORD dwFlags = 0;
@@ -279,7 +256,7 @@ bool CIOCPModel::PostRecv( IoContext* pIoContext )
 	OVERLAPPED *p_ol = &pIoContext->m_Overlapped;
 
 	pIoContext->ResetBuffer();
-	pIoContext->m_OpType = RECV;
+	pIoContext->m_OpType = RECV_POSTED;
 	pIoContext->m_nSendBytes = 0;
 	pIoContext->m_nTotalBytes= 0;
 
@@ -302,7 +279,7 @@ bool CIOCPModel::PostRecv( IoContext* pIoContext )
 PER_IO_CONTEXT* pIoContext:	用于进行IO的套接字上的结构，主要为WSARecv参数和WSASend参数
 *函数说明：调用PostWrite之前需要设置pIoContext中m_wsaBuf, m_nTotalBytes, m_nSendBytes；
 **************************************************************/
-bool CIOCPModel::PostWrite(IoContext* pIoContext)
+bool CIOCPModel::PostWrite(PER_IO_CONTEXT* pIoContext)
 {
 	// 初始化变量
 	DWORD dwFlags = 0;
@@ -310,7 +287,7 @@ bool CIOCPModel::PostWrite(IoContext* pIoContext)
 	WSABUF *p_wbuf   = &pIoContext->m_wsaBuf;
 	OVERLAPPED *p_ol = &pIoContext->m_Overlapped;
 
-	pIoContext->m_OpType = SEND;
+	pIoContext->m_OpType = SEND_POSTED;
 
 	//投递WSASend请求 -- 需要修改
 	int nRet = WSASend(pIoContext->m_sockAccept, &pIoContext->m_wsaBuf, 1, &dwSendNumBytes, dwFlags,
@@ -373,7 +350,7 @@ bool CIOCPModel::_InitializeListenSocket()
 	struct sockaddr_in ServerAddress;
 
 	// 生成用于监听的Socket的信息
-	m_pListenContext = new SocketContext;
+	m_pListenContext = new PER_SOCKET_CONTEXT;
 
 	// 需要使用重叠IO，必须得使用WSASocket来建立Socket，才可以支持重叠IO操作
 	m_pListenContext->m_Socket = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, WSA_FLAG_OVERLAPPED);
@@ -472,7 +449,7 @@ bool CIOCPModel::_InitializeListenSocket()
 	for( int i=0;i<MAX_POST_ACCEPT;i++ )
 	{
 		// 新建一个IO_CONTEXT
-		IoContext* pAcceptIoContext = m_pListenContext->GetNewIoContext();
+		PER_IO_CONTEXT* pAcceptIoContext = m_pListenContext->GetNewIoContext();
 
 		if( false==this->_PostAccept( pAcceptIoContext ) )
 		{
@@ -523,13 +500,13 @@ void CIOCPModel::_DeInitialize()
 
 //////////////////////////////////////////////////////////////////
 // 投递Accept请求
-bool CIOCPModel::_PostAccept( IoContext* pAcceptIoContext )
+bool CIOCPModel::_PostAccept( PER_IO_CONTEXT* pAcceptIoContext )
 {
 	ASSERT( INVALID_SOCKET!=m_pListenContext->m_Socket );
 
 	// 准备参数
 	DWORD dwBytes = 0;  
-	pAcceptIoContext->m_OpType = ACCEPT;  
+	pAcceptIoContext->m_OpType = ACCEPT_POSTED;  
 	WSABUF *p_wbuf   = &pAcceptIoContext->m_wsaBuf;
 	OVERLAPPED *p_ol = &pAcceptIoContext->m_Overlapped;
 	
@@ -555,21 +532,15 @@ bool CIOCPModel::_PostAccept( IoContext* pAcceptIoContext )
 	return true;
 }
 
-////////////////////////////////////////////////////////////
-// 在有客户端连入的时候，进行处理
-// 流程有点复杂，你要是看不懂的话，就看配套的文档吧....
-// 如果能理解这里的话，完成端口的机制你就消化了一大半了
 
-// 总之你要知道，传入的是ListenSocket的Context，我们需要复制一份出来给新连入的Socket用
-// 原来的Context还是要在上面继续投递下一个Accept请求
 /********************************************************************
 *函数功能：函数进行客户端接入处理；
 *参数说明：
-SocketContext* pSocketContext:	本次accept操作对应的套接字，该套接字所对应的数据结构；
+PER_SOCKET_CONTEXT* pSocketContext:	本次accept操作对应的套接字，该套接字所对应的数据结构；
 PER_IO_CONTEXT* pIoContext:			本次accept操作对应的数据结构；
 DWORD		dwIOSize:				本次操作数据实际传输的字节数
 ********************************************************************/
-bool CIOCPModel::_DoAccpet( SocketContext* pSocketContext, IoContext* pIoContext )
+bool CIOCPModel::_DoAccpet( PER_SOCKET_CONTEXT* pSocketContext, PER_IO_CONTEXT* pIoContext )
 {
 	
 	if (pIoContext->m_nTotalBytes > 0)
@@ -590,35 +561,43 @@ bool CIOCPModel::_DoAccpet( SocketContext* pSocketContext, IoContext* pIoContext
 }
 
 
+/////////////////////////////////////////////////////////////////
+//函数功能：在有接收的数据到达的时候，进行处理
+bool CIOCPModel::_DoRecv( PER_SOCKET_CONTEXT* pSocketContext, PER_IO_CONTEXT* pIoContext )
+{
+	//输出接收的数据
+	SOCKADDR_IN* ClientAddr = &pSocketContext->m_ClientAddr;
+	this->_ShowMessage( _T("收到  %s:%d 信息：%s"),inet_ntoa(ClientAddr->sin_addr), ntohs(ClientAddr->sin_port),pIoContext->m_wsaBuf.buf );
+
+	//发送数据
+	pIoContext->m_nSendBytes = 0;
+	pIoContext->m_nTotalBytes= pIoContext->m_nTotalBytes;
+	pIoContext->m_wsaBuf.len = pIoContext->m_nTotalBytes;
+	pIoContext->m_wsaBuf.buf = pIoContext->m_szBuffer;
+	return PostWrite( pIoContext );
+}
 
 /*************************************************************
 *函数功能：AcceptEx接收客户连接成功，接收客户第一次发送的数据，故投递WSASend请求
 *函数参数：
 PER_IO_CONTEXT* pIoContext:	用于监听套接字上的操作
 **************************************************************/
-bool CIOCPModel::_DoFirstRecvWithData(IoContext* pIoContext)
+bool CIOCPModel::_DoFirstRecvWithData(PER_IO_CONTEXT* pIoContext)
 {
 	SOCKADDR_IN* ClientAddr = NULL;
 	SOCKADDR_IN* LocalAddr = NULL;  
 	int remoteLen = sizeof(SOCKADDR_IN), localLen = sizeof(SOCKADDR_IN);  
 
-	///////////////////////////////////////////////////////////////////////////
-	// 1. 首先取得连入客户端的地址信息
-	// 这个 m_lpfnGetAcceptExSockAddrs 不得了啊~~~~~~
-	// 不但可以取得客户端和本地端的地址信息，还能顺便取出客户端发来的第一组数据，老强大了...
+	//1. 首先取得连入客户端的地址信息
 	this->m_lpfnGetAcceptExSockAddrs(pIoContext->m_wsaBuf.buf, pIoContext->m_wsaBuf.len - ((sizeof(SOCKADDR_IN)+16)*2),  
 		sizeof(SOCKADDR_IN)+16, sizeof(SOCKADDR_IN)+16, (LPSOCKADDR*)&LocalAddr, &localLen, (LPSOCKADDR*)&ClientAddr, &remoteLen);  
 
 	//显示客户端信息
-	this->_ShowMessage( _T("客户端 %s:%d 连入."), inet_ntoa(ClientAddr->sin_addr), ntohs(ClientAddr->sin_port) );
 	this->_ShowMessage( _T("客户额 %s:%d 信息：%s."),inet_ntoa(ClientAddr->sin_addr), ntohs(ClientAddr->sin_port),pIoContext->m_wsaBuf.buf );
 
 
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	// 2. 这里需要注意，这里传入的这个是ListenSocket上的Context，这个Context我们还需要用于监听下一个连接
-	// 所以我还得要将ListenSocket上的Context复制出来一份为新连入的Socket新建一个SocketContext
-	//2.为新接入的套接创建SocketContext，并将该套接字绑定到完成端口
-	SocketContext* pNewSocketContext = new SocketContext;
+	//2.为新接入的套接创建PER_SOCKET_CONTEXT，并将该套接字绑定到完成端口
+	PER_SOCKET_CONTEXT* pNewSocketContext = new PER_SOCKET_CONTEXT;
 	pNewSocketContext->m_Socket           = pIoContext->m_sockAccept;
 	memcpy(&(pNewSocketContext->m_ClientAddr), ClientAddr, sizeof(SOCKADDR_IN));
 
@@ -630,14 +609,14 @@ bool CIOCPModel::_DoFirstRecvWithData(IoContext* pIoContext)
 	}  
 
 	//3. 继续，建立其下的IoContext，用于在这个Socket上投递第一个Recv数据请求
-	IoContext* pNewIoContext = pNewSocketContext->GetNewIoContext();
-	pNewIoContext->m_OpType       = SEND;
+	PER_IO_CONTEXT* pNewIoContext = pNewSocketContext->GetNewIoContext();
+	pNewIoContext->m_OpType       = SEND_POSTED;
 	pNewIoContext->m_sockAccept   = pNewSocketContext->m_Socket;
 	pNewIoContext->m_nTotalBytes  = pIoContext->m_nTotalBytes;
 	pNewIoContext->m_nSendBytes   = 0;
 	pNewIoContext->m_wsaBuf.len	  = pIoContext->m_nTotalBytes;
-	//复制数据到WSASend函数的参数缓冲区
-	memcpy(pNewIoContext->m_wsaBuf.buf, pIoContext->m_wsaBuf.buf, pIoContext->m_nTotalBytes);	
+	memcpy(pNewIoContext->m_wsaBuf.buf, pIoContext->m_wsaBuf.buf, pIoContext->m_nTotalBytes);	//复制数据到WSASend函数的参数缓冲区
+
 	//此时是第一次接收数据成功，所以这里投递PostWrite，向客户端发送数据
 	if( false==this->PostWrite( pNewIoContext) )
 	{
@@ -645,51 +624,21 @@ bool CIOCPModel::_DoFirstRecvWithData(IoContext* pIoContext)
 		return false;
 	}
 
-	/////////////////////////////////////////////////////////////////////////////////////////////////
-	// 4. 如果投递成功，那么就把这个有效的客户端信息，加入到ContextList中去(需要统一管理，方便释放资源)
-	this->_AddToContextList( pNewSocketContext );
+	//4. 如果投递成功，那么就把这个有效的客户端信息，加入到ContextList中去(需要统一管理，方便释放资源)
+	this->_AddToContextList( pNewSocketContext ); 
 
-	////////////////////////////////////////////////////////////////////////////////////////////////
-	// 5. 使用完毕之后，把Listen Socket的那个IoContext重置，然后准备投递新的AcceptEx
-	//pIoContext->ResetBuffer();
-	//return this->_PostAccept( pIoContext );
-	return true; 	
-}
-
-////////////////////////////////////////////////////////////////////
-// 投递接收数据请求
-/*bool CIOCPModel::_PostRecv( PER_IO_CONTEXT* pIoContext )
-{
-	// 初始化变量
-	DWORD dwFlags = 0;
-	DWORD dwBytes = 0;
-	WSABUF *p_wbuf   = &pIoContext->m_wsaBuf;
-	OVERLAPPED *p_ol = &pIoContext->m_Overlapped;
-
-	pIoContext->ResetBuffer();
-	pIoContext->m_OpType = RECV_POSTED;
-
-	// 初始化完成后，，投递WSARecv请求
-	int nBytesRecv = WSARecv( pIoContext->m_sockAccept, p_wbuf, 1, &dwBytes, &dwFlags, p_ol, NULL );
-
-	// 如果返回值错误，并且错误的代码并非是Pending的话，那就说明这个重叠请求失败了
-	if ((SOCKET_ERROR == nBytesRecv) && (WSA_IO_PENDING != WSAGetLastError()))
-	{
-		this->_ShowMessage("投递第一个WSARecv失败！");
-		return false;
-	}
 	return true;
-}*/
+}
 
 /*************************************************************
 *函数功能：AcceptEx接收客户连接成功，此时并未接收到数据，故投递WSARecv请求
 *函数参数：
 PER_IO_CONTEXT* pIoContext:	用于监听套接字上的操作
 **************************************************************/
-bool CIOCPModel::_DoFirstRecvWithoutData(IoContext* pIoContext )
+bool CIOCPModel::_DoFirstRecvWithoutData(PER_IO_CONTEXT* pIoContext )
 {
-	//为新接入的套接字创建SocketContext结构，并绑定到完成端口
-	SocketContext* pNewSocketContext = new SocketContext;
+	//为新接入的套接字创建PER_SOCKET_CONTEXT结构，并绑定到完成端口
+	PER_SOCKET_CONTEXT* pNewSocketContext = new PER_SOCKET_CONTEXT;
 	SOCKADDR_IN ClientAddr;
 	int Len = sizeof(ClientAddr);
 
@@ -706,7 +655,7 @@ bool CIOCPModel::_DoFirstRecvWithoutData(IoContext* pIoContext )
 	} 
 
 	//投递WSARecv请求，接收数据
-	IoContext* pNewIoContext = pNewSocketContext->GetNewIoContext();
+	PER_IO_CONTEXT* pNewIoContext = pNewSocketContext->GetNewIoContext();
 
 	//此时是AcceptEx未接收到客户端第一次发送的数据，所以这里调用PostRecv，接收来自客户端的数据
 	if( false==this->PostRecv( pNewIoContext) )
@@ -721,30 +670,10 @@ bool CIOCPModel::_DoFirstRecvWithoutData(IoContext* pIoContext )
 	return true;
 }
 
-/////////////////////////////////////////////////////////////////
-// 在有接收的数据到达的时候，进行处理
-bool CIOCPModel::_DoRecv( SocketContext* pSocketContext, IoContext* pIoContext )
-{
-	// 先把上一次的数据显示出现，然后就重置状态，发出下一个Recv请求
-	SOCKADDR_IN* ClientAddr = &pSocketContext->m_ClientAddr;
-	this->_ShowMessage( _T("收到  %s:%d 信息：%s"),inet_ntoa(ClientAddr->sin_addr), ntohs(ClientAddr->sin_port),pIoContext->m_wsaBuf.buf );
-
-	// 然后开始投递下一个WSARecv请求
-
-	//发送数据
-	pIoContext->m_nSendBytes = 0;
-	pIoContext->m_nTotalBytes= pIoContext->m_nTotalBytes;
-	pIoContext->m_wsaBuf.len = pIoContext->m_nTotalBytes;
-	pIoContext->m_wsaBuf.buf = pIoContext->m_szBuffer;
-	return PostWrite( pIoContext );
-	//return _PostRecv( pIoContext );
-}
-
-
 
 /////////////////////////////////////////////////////
 // 将句柄(Socket)绑定到完成端口中
-bool CIOCPModel::_AssociateWithIOCP( SocketContext *pContext )
+bool CIOCPModel::_AssociateWithIOCP( PER_SOCKET_CONTEXT *pContext )
 {
 	// 将用于和客户端通信的SOCKET绑定到完成端口中
 	HANDLE hTemp = CreateIoCompletionPort((HANDLE)pContext->m_Socket, m_hIOCompletionPort, (DWORD)pContext, 0);
@@ -760,17 +689,9 @@ bool CIOCPModel::_AssociateWithIOCP( SocketContext *pContext )
 
 
 
-
-//====================================================================================
-//
-//				    ContextList 相关操作
-//
-//====================================================================================
-
-
 //////////////////////////////////////////////////////////////
 // 将客户端的相关信息存储到数组中
-void CIOCPModel::_AddToContextList( SocketContext *pHandleData )
+void CIOCPModel::_AddToContextList( PER_SOCKET_CONTEXT *pHandleData )
 {
 	EnterCriticalSection(&m_csContextList);
 
@@ -781,7 +702,7 @@ void CIOCPModel::_AddToContextList( SocketContext *pHandleData )
 
 ////////////////////////////////////////////////////////////////
 //	移除某个特定的Context
-void CIOCPModel::_RemoveContext( SocketContext *pSocketContext )
+void CIOCPModel::_RemoveContext( PER_SOCKET_CONTEXT *pSocketContext )
 {
 	EnterCriticalSection(&m_csContextList);
 
@@ -813,14 +734,6 @@ void CIOCPModel::_ClearContextList()
 
 	LeaveCriticalSection(&m_csContextList);
 }
-
-
-
-//====================================================================================
-//
-//				       其他辅助函数定义
-//
-//====================================================================================
 
 
 
@@ -896,7 +809,7 @@ bool CIOCPModel::_IsSocketAlive(SOCKET s)
 
 ///////////////////////////////////////////////////////////////////
 //函数功能：显示并处理完成端口上的错误
-bool CIOCPModel::HandleError( SocketContext *pContext,const DWORD& dwErr )
+bool CIOCPModel::HandleError( PER_SOCKET_CONTEXT *pContext,const DWORD& dwErr )
 {
 	// 如果是超时了，就再继续等吧  
 	if(WAIT_TIMEOUT == dwErr)  
@@ -929,3 +842,7 @@ bool CIOCPModel::HandleError( SocketContext *pContext,const DWORD& dwErr )
 		return false;
 	}
 }
+
+
+
+

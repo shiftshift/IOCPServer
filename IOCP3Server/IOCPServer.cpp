@@ -1,5 +1,7 @@
-//IOCPServer.cpp : 定义应用程序的类行为。
-#include "StdAfx.h"
+// PiggyIOCPServer.cpp : 定义应用程序的类行为。
+//
+
+#include "stdafx.h"
 #include "IOCPServer.h"
 #include "MainDlg.h"
 
@@ -7,23 +9,31 @@
 #define new DEBUG_NEW
 #endif
 
-// CMyServerApp
-BEGIN_MESSAGE_MAP(CMyServerApp, CWinApp)
+
+// CPiggyIOCPServerApp
+
+BEGIN_MESSAGE_MAP(CPiggyIOCPServerApp, CWinApp)
 	ON_COMMAND(ID_HELP, &CWinApp::OnHelp)
 END_MESSAGE_MAP()
 
-// CMyServerApp 构造
-CMyServerApp::CMyServerApp()
+
+// CPiggyIOCPServerApp 构造
+
+CPiggyIOCPServerApp::CPiggyIOCPServerApp()
 {
-	// 在此处添加构造代码，
+	// TODO: 在此处添加构造代码，
 	// 将所有重要的初始化放置在 InitInstance 中
 }
 
-// 唯一的一个 CMyServerApp 对象
-CMyServerApp theApp;
 
-// CMyServerApp 初始化
-BOOL CMyServerApp::InitInstance()
+// 唯一的一个 CPiggyIOCPServerApp 对象
+
+CPiggyIOCPServerApp theApp;
+
+
+// CPiggyIOCPServerApp 初始化
+
+BOOL CPiggyIOCPServerApp::InitInstance()
 {
 	// 如果一个运行在 Windows XP 上的应用程序清单指定要
 	// 使用 ComCtl32.dll 版本 6 或更高版本来启用可视化方式，
@@ -34,6 +44,7 @@ BOOL CMyServerApp::InitInstance()
 	// 公共控件类。
 	InitCtrls.dwICC = ICC_WIN95_CLASSES;
 	InitCommonControlsEx(&InitCtrls);
+
 	CWinApp::InitInstance();
 
 	// 标准初始化
@@ -50,12 +61,12 @@ BOOL CMyServerApp::InitInstance()
 	INT_PTR nResponse = dlg.DoModal();
 	if (nResponse == IDOK)
 	{
-		// 在此放置处理何时用
+		// TODO: 在此放置处理何时用
 		//  “确定”来关闭对话框的代码
 	}
 	else if (nResponse == IDCANCEL)
 	{
-		// 在此放置处理何时用
+		// TODO: 在此放置处理何时用
 		//  “取消”来关闭对话框的代码
 	}
 

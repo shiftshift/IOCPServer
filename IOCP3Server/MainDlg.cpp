@@ -1,28 +1,32 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "IOCPServer.h"
 #include "MainDlg.h"
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
 
+
+
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
+
 class CAboutDlg : public CDialog
 {
 public:
 	CAboutDlg();
 
-	// 对话框数据
+// 对话框数据
 	enum { IDD = IDD_ABOUTBOX };
 
-protected:
-	virtual void DoDataExchange(CDataExchange* pDX);
+	protected:
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
 
 // 实现
 protected:
 	DECLARE_MESSAGE_MAP()
 };
 
-CAboutDlg::CAboutDlg(): CDialog(CAboutDlg::IDD)
+CAboutDlg::CAboutDlg() : CDialog(CAboutDlg::IDD)
 {
 }
 
@@ -34,7 +38,12 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialog)
 END_MESSAGE_MAP()
 
+
 // CMainDlg 对话框
+
+
+
+
 CMainDlg::CMainDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CMainDlg::IDD, pParent)
 {
@@ -59,14 +68,19 @@ BEGIN_MESSAGE_MAP(CMainDlg, CDialog)
 	ON_WM_DESTROY()
 END_MESSAGE_MAP()
 
+
 // CMainDlg 消息处理程序
+
 BOOL CMainDlg::OnInitDialog()
 {
 	CDialog::OnInitDialog();
+
 	// 将“关于...”菜单项添加到系统菜单中。
+
 	// IDM_ABOUTBOX 必须在系统命令范围内。
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
 	ASSERT(IDM_ABOUTBOX < 0xF000);
+
 	CMenu* pSysMenu = GetSystemMenu(FALSE);
 	if (pSysMenu != NULL)
 	{
@@ -78,12 +92,15 @@ BOOL CMainDlg::OnInitDialog()
 			pSysMenu->AppendMenu(MF_STRING, IDM_ABOUTBOX, strAboutMenu);
 		}
 	}
+
 	// 设置此对话框的图标。当应用程序主窗口不是对话框时，框架将自动
 	//  执行此操作
 	SetIcon(m_hIcon, TRUE);			// 设置大图标
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
+
 	// 初始化界面信息
-	this->Init();
+	this->Init();	
+
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -109,8 +126,9 @@ void CMainDlg::OnPaint()
 	if (IsIconic())
 	{
 		CPaintDC dc(this); // 用于绘制的设备上下文
-		SendMessage(WM_ICONERASEBKGND, 
-			reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
+
+		SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
+
 		// 使图标在工作区矩形中居中
 		int cxIcon = GetSystemMetrics(SM_CXICON);
 		int cyIcon = GetSystemMetrics(SM_CYICON);
@@ -118,6 +136,7 @@ void CMainDlg::OnPaint()
 		GetClientRect(&rect);
 		int x = (rect.Width() - cxIcon + 1) / 2;
 		int y = (rect.Height() - cyIcon + 1) / 2;
+
 		// 绘制图标
 		dc.DrawIcon(x, y, m_hIcon);
 	}
@@ -139,16 +158,16 @@ HCURSOR CMainDlg::OnQueryDragIcon()
 void CMainDlg::Init()
 {
 	// 初始化Socket库
-	if (false == m_IOCP.LoadSocketLib())
+	if( false==m_IOCP.LoadSocketLib() )
 	{
 		AfxMessageBox(_T("加载Winsock 2.2失败，服务器端无法运行！"));
 		PostQuitMessage(0);
 	}
 
 	// 设置本机IP地址
-	SetDlgItemText(IDC_STATIC_SERVERIP, m_IOCP.GetLocalIP());
+	SetDlgItemText( IDC_STATIC_SERVERIP,m_IOCP.GetLocalIP() );
 	// 设置默认端口
-	SetDlgItemInt(IDC_EDIT_PORT, DEFAULT_PORT);
+	SetDlgItemInt( IDC_EDIT_PORT,DEFAULT_PORT );
 	// 初始化列表
 	this->InitListCtrl();
 	// 绑定主界面指针(为了方便在界面中显示信息 )
@@ -159,13 +178,15 @@ void CMainDlg::Init()
 //	开始监听
 void CMainDlg::OnBnClickedOk()
 {
-	if (false == m_IOCP.Start())
+	if( false==m_IOCP.Start() )
 	{
 		AfxMessageBox(_T("服务器启动失败！"));
-		return;
+		return;	
 	}
+
 	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
 	pList->DeleteAllItems();
+
 	GetDlgItem(IDOK)->EnableWindow(FALSE);
 	GetDlgItem(IDC_STOP)->EnableWindow(TRUE);
 }
@@ -175,6 +196,7 @@ void CMainDlg::OnBnClickedOk()
 void CMainDlg::OnBnClickedStop()
 {
 	m_IOCP.Stop();
+
 	GetDlgItem(IDC_STOP)->EnableWindow(FALSE);
 	GetDlgItem(IDOK)->EnableWindow(TRUE);
 }
@@ -184,8 +206,8 @@ void CMainDlg::OnBnClickedStop()
 void CMainDlg::InitListCtrl()
 {
 	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
-	pList->SetExtendedStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
-	pList->InsertColumn(0, "INFORMATION", LVCFMT_LEFT, 500);
+	pList->SetExtendedStyle(LVS_EX_FULLROWSELECT|LVS_EX_GRIDLINES);
+	pList->InsertColumn(0,"INFORMATION",LVCFMT_LEFT,500);
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -194,6 +216,7 @@ void CMainDlg::OnBnClickedCancel()
 {
 	// 停止监听
 	m_IOCP.Stop();
+
 	CDialog::OnCancel();
 }
 
@@ -202,5 +225,6 @@ void CMainDlg::OnBnClickedCancel()
 void CMainDlg::OnDestroy()
 {
 	OnBnClickedCancel();
+
 	CDialog::OnDestroy();
 }
