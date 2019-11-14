@@ -187,6 +187,9 @@ void CMainDlg::OnBnClickedOk()
 		return;	
 	}
 
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
+	pList->DeleteAllItems();
+
 	GetDlgItem(IDOK)->EnableWindow(FALSE);
 	GetDlgItem(IDC_STOP)->EnableWindow(TRUE);
 }
