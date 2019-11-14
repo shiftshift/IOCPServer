@@ -207,6 +207,9 @@ void CMainDlg::OnBnClickedOk()
 		return;
 	}
 
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
+	pList->DeleteAllItems();
+
 	// 给CClient设置参数
 	m_Client.SetIP(strIP);
 	m_Client.SetPort(nPort);

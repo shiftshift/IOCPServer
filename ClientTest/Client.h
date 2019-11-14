@@ -44,6 +44,7 @@ typedef struct _tagThreadParams_WORKER
 	SOCKET   sock;                                  // 每个线程使用的Socket
 	int      nThreadNo;                             // 线程编号
 	char     szBuffer[MAX_BUFFER_LEN];
+	char	 szBuffer1[MAX_BUFFER_LEN];
 
 } THREADPARAMS_WORKER,*PTHREADPARAM_WORKER;  
 

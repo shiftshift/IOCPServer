@@ -72,8 +72,19 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 		return 1; 
 	}	
 	TRACE("向服务器发送信息成功: %s\n", szTemp);
-	pClient->ShowMessage("向服务器发送信息成功: %s", szTemp);
+	pClient->ShowMessage("SEND1 向服务器发送信息成功: %s", szTemp);
 
+	memset(pParams->szBuffer1, 0, 8196);
+	memset( szTemp,0,sizeof(szTemp) );
+	nBytesRecv = recv(pParams->sock, pParams->szBuffer1, 8196, 0);
+	if (SOCKET_ERROR == nBytesRecv) 
+	{
+		TRACE("错误：接收1次信息失败，错误代码：%ld\n", WSAGetLastError());
+		return 1; 
+	}
+	pParams->szBuffer[nBytesRecv] = 0;
+	sprintf( szTemp,("RECV1 第%d号线程，接收第1条信息：\"%s\""), pParams->nThreadNo, pParams->szBuffer1);
+	pClient->ShowMessage(szTemp);
 	Sleep( 3000 );
 
 	// 再发送一条信息
@@ -87,8 +98,19 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 	}	
 	
 	TRACE("向服务器发送信息成功: %s\n", szTemp);
-	pClient->ShowMessage("向服务器发送信息成功: %s", szTemp);
+	pClient->ShowMessage("SEND2 向服务器发送信息成功: %s", szTemp);
 
+	memset(pParams->szBuffer1, 0, 8196);
+	memset( szTemp,0,sizeof(szTemp) );
+	nBytesRecv = recv(pParams->sock, pParams->szBuffer1, 8196, 0);
+	if (SOCKET_ERROR == nBytesRecv) 
+	{
+		TRACE("错误：接收2次信息失败，错误代码：%ld\n", WSAGetLastError());
+		return 1; 
+	}
+	pParams->szBuffer[nBytesRecv] = 0;
+	sprintf( szTemp,("RECV2 第%d号线程，接收第2条信息：\"%s\""), pParams->nThreadNo, pParams->szBuffer1);
+	pClient->ShowMessage(szTemp);
 	Sleep( 3000 );
 	
 	// 发第3条信息
@@ -100,9 +122,20 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 		TRACE("错误：发送第3次信息失败，错误代码：%ld\n", WSAGetLastError());
 		return 1; 
 	}	
-
+	pClient->ShowMessage("SEND3 向服务器发送信息成功: %s", szTemp);
 	TRACE("向服务器发送信息成功: %s\n", szTemp);
-	pClient->ShowMessage("向服务器发送信息成功: %s", szTemp);
+
+	memset(pParams->szBuffer1, 0, 8196);
+	memset( szTemp,0,sizeof(szTemp) );
+	nBytesRecv = recv(pParams->sock, pParams->szBuffer1, 8196, 0);
+	if (SOCKET_ERROR == nBytesRecv) 
+	{
+		TRACE("错误：接收3次信息失败，错误代码：%ld\n", WSAGetLastError());
+		return 1; 
+	}
+	pParams->szBuffer[nBytesRecv] = 0;
+	sprintf( szTemp,("RECV3 第%d号线程，接收第3条信息：\"%s\""), pParams->nThreadNo, pParams->szBuffer1);
+	pClient->ShowMessage(szTemp);
 
 	if( pParams->nThreadNo==pClient->m_nThreads )
 	{
