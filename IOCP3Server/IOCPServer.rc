@@ -95,12 +95,12 @@ FONT 9, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "开始监听",IDOK,59,192,50,14
     PUSHBUTTON      "退出",IDCANCEL,221,192,50,14
-    LTEXT           "服务器IP地址：",IDC_STATIC,14,158,48,8
-    LTEXT           "127.0.0.1",IDC_STATIC_SERVERIP,64,159,79,8
+    LTEXT           "服务器IP地址：",IDC_STATIC,38,169,49,8
+    LTEXT           "127.0.0.1",IDC_STATIC_SERVERIP,88,170,49,8
     PUSHBUTTON      "停止监听",IDC_STOP,139,192,50,14,WS_DISABLED
-    CONTROL         "",IDC_LIST_INFO,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,7,7,320,141
-    LTEXT           "监听端口：",IDC_STATIC,168,159,35,8
-    EDITTEXT        IDC_EDIT_PORT,214,157,40,14,ES_AUTOHSCROLL
+    CONTROL         "",IDC_LIST_INFO,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,7,7,320,157
+    CONTROL         "监听端口：",IDC_STATIC,"Static",SS_SIMPLE | WS_GROUP,202,171,34,8
+    EDITTEXT        IDC_EDIT_PORT,238,168,40,14,ES_AUTOHSCROLL
 END
 
 
@@ -168,6 +168,17 @@ BEGIN
     END
 END
 #endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_SERVER_DIALOG AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
 
 
 /////////////////////////////////////////////////////////////////////////////
