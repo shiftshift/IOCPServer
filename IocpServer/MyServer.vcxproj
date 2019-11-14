@@ -10,11 +10,23 @@
       <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="IOCP\IoContext.h" />
+    <ClInclude Include="IOCP\IocpModel.h" />
+    <ClInclude Include="IOCP\SocketContext.h" />
+    <ClInclude Include="MyServer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="IOCP\IocpModel.cpp" />
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="MyServer.cpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{8507AA65-0300-48B5-A603-57CFD1DC2130}</ProjectGuid>
     <RootNamespace>IoCPServer</RootNamespace>
     <Keyword>Win32Proj</Keyword>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>IocpServer</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
@@ -57,13 +69,13 @@
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <MinimalRebuild>true</MinimalRebuild>
+      <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
       <AdditionalDependencies>ws2_32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -92,19 +104,6 @@
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="Src\Main.cpp" />
-    <ClCompile Include="Src\IoCP\IOCPModel.cpp" />
-    <ClCompile Include="Src\ServerEngine\MyServerEngine.cpp" />
-    <ClCompile Include="Src\ServerUtil\pub.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Src\IoCP\IOCPModel.h" />
-    <ClInclude Include="Src\IoCP\PER_IO_CONTEXT.h" />
-    <ClInclude Include="Src\IoCP\PER_SOCKET_CONTEXT.h" />
-    <ClInclude Include="Src\ServerEngine\MyServerEngine.h" />
-    <ClInclude Include="Src\ServerUtil\pub.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

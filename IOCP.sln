@@ -9,7 +9,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "client", "client\client.vcx
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "server", "server\server.vcxproj", "{CC801F10-D099-4EA7-92BD-F25F3D27C051}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IoCPServer", "IoCPServer\IoCPServer.vcxproj", "{8507AA65-0300-48B5-A603-57CFD1DC2130}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IocpServer", "IocpServer\MyServer.vcxproj", "{8507AA65-0300-48B5-A603-57CFD1DC2130}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
