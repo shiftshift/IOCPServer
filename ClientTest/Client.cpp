@@ -7,6 +7,7 @@
 #define RELEASE_HANDLE(x) {if(x != NULL && x!=INVALID_HANDLE_VALUE)\
 		{ CloseHandle(x);x = NULL;}}
 #define RELEASE_POINTER(x) {if(x != NULL ){delete x;x=NULL;}}
+#define RELEASE_ARRAY(x) {if(x != NULL ){delete[] x;x=NULL;}}
 
 CClient::CClient(void) :
 	m_strServerIP(DEFAULT_IP),
@@ -30,7 +31,7 @@ CClient::~CClient(void)
 //	建立连接的线程
 DWORD WINAPI CClient::_ConnectionThread(LPVOID lpParam)
 {
-	ConnectThreadParam* pParams = (ConnectThreadParam*)lpParam;
+	ConnectionThreadParam* pParams = (ConnectionThreadParam*)lpParam;
 	CClient* pClient = (CClient*)pParams->pClient;
 	TRACE("_AccpetThread启动，系统监听中...\n");
 	pClient->EstablishConnections();
@@ -45,88 +46,47 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 {
 	WorkerThreadParam* pParams = (WorkerThreadParam*)lpParam;
 	CClient* pClient = (CClient*)pParams->pClient;
-	char szTemp[MAX_BUFFER_LEN];
-	memset(szTemp, 0, sizeof(szTemp));
-	char szRecv[MAX_BUFFER_LEN];
-	memset(szRecv, 0, MAX_BUFFER_LEN);
+	char szTemp[MAX_BUFFER_LEN] = { 0 };
+	char szRecv[MAX_BUFFER_LEN] = { 0 };
 	int nBytesSent = 0;
 	int nBytesRecv = 0;
-	// 向服务器发送信息
-	sprintf(szTemp, ("第1条信息：%s"), pParams->szBuffer);
-	nBytesSent = send(pParams->sock, szTemp, strlen(szTemp), 0);
-	if (SOCKET_ERROR == nBytesSent)
-	{
-		TRACE("错误：发送1次信息失败，错误代码：%ld\n", WSAGetLastError());
-		return 1;
-	}
-	TRACE("向服务器发送信息成功: %s\n", szTemp);
-	pClient->ShowMessage("SEND1 向服务器发送信息成功: %s", szTemp);
 
-	memset(pParams->szBuffer1, 0, 8196);
-	memset(szTemp, 0, sizeof(szTemp));
-	nBytesRecv = recv(pParams->sock, pParams->szBuffer1, 8196, 0);
-	if (SOCKET_ERROR == nBytesRecv)
+	for (int i = 1; i <= pParams->nSendTimes; i++)
 	{
-		TRACE("错误：接收1次信息失败，错误代码：%ld\n", WSAGetLastError());
-		return 1;
-	}
-	pParams->szBuffer[nBytesRecv] = 0;
-	sprintf(szTemp, ("RECV1 第%d号线程，接收第1条信息：\"%s\""),
-		pParams->nThreadNo, pParams->szBuffer1);
-	pClient->ShowMessage(szTemp);
-	Sleep(3000);
+		memset(szRecv, 0, MAX_BUFFER_LEN);
+		memset(szTemp, 0, sizeof(szTemp));
+		// 向服务器发送信息
+		sprintf(szTemp, ("Msg:[%d] Thread:[%d], Data:[%s]"),
+			i, pParams->nThreadNo, pParams->szSendBuffer);
+		nBytesSent = send(pParams->sock, szTemp, strlen(szTemp), 0);
+		if (SOCKET_ERROR == nBytesSent)
+		{
+			TRACE("send ERROR: ErrCode=[%ld]\n", WSAGetLastError());
+			return 1;
+		}
+		pClient->ShowMessage("SENT: %s", szTemp);
+		TRACE("SENT: %s\n", szTemp);
 
-	// 再发送一条信息
-	memset(szTemp, 0, sizeof(szTemp));
-	sprintf(szTemp, ("第2条信息：%s"), pParams->szBuffer);
-	nBytesSent = send(pParams->sock, szTemp, strlen(szTemp), 0);
-	if (SOCKET_ERROR == nBytesSent)
-	{
-		TRACE("错误：发送第2次信息失败，错误代码：%ld\n", WSAGetLastError());
-		return 1;
+		memset(pParams->szRecvBuffer, 0, MAX_BUFFER_LEN);
+		memset(szTemp, 0, sizeof(szTemp));
+		nBytesRecv = recv(pParams->sock, pParams->szRecvBuffer,
+			MAX_BUFFER_LEN, 0);
+		if (SOCKET_ERROR == nBytesRecv)
+		{
+			TRACE("recv ERROR: ErrCode=[%ld]\n", WSAGetLastError());
+			return 1;
+		}
+		pParams->szRecvBuffer[nBytesRecv] = 0;
+		sprintf(szTemp, ("RECV: Msg:[%d] Thread[%d], Data[%s]"),
+			i, pParams->nThreadNo, pParams->szRecvBuffer);
+		pClient->ShowMessage(szTemp);
+		Sleep(1000);
 	}
-	TRACE("向服务器发送信息成功: %s\n", szTemp);
-	pClient->ShowMessage("SEND2 向服务器发送信息成功: %s", szTemp);
-	memset(pParams->szBuffer1, 0, 8196);
-	memset(szTemp, 0, sizeof(szTemp));
-	nBytesRecv = recv(pParams->sock, pParams->szBuffer1, 8196, 0);
-	if (SOCKET_ERROR == nBytesRecv)
-	{
-		TRACE("错误：接收2次信息失败，错误代码：%ld\n", WSAGetLastError());
-		return 1;
-	}
-	pParams->szBuffer[nBytesRecv] = 0;
-	sprintf(szTemp, ("RECV2 第%d号线程，接收第2条信息：\"%s\""),
-		pParams->nThreadNo, pParams->szBuffer1);
-	pClient->ShowMessage(szTemp);
-	Sleep(3000);
 
-	// 发第3条信息
-	memset(szTemp, 0, sizeof(szTemp));
-	sprintf(szTemp, ("第3条信息：%s"), pParams->szBuffer);
-	nBytesSent = send(pParams->sock, szTemp, strlen(szTemp), 0);
-	if (SOCKET_ERROR == nBytesSent)
-	{
-		TRACE("错误：发送第3次信息失败，错误代码：%ld\n", WSAGetLastError());
-		return 1;
-	}
-	pClient->ShowMessage("SEND3 向服务器发送信息成功: %s", szTemp);
-	TRACE("向服务器发送信息成功: %s\n", szTemp);
-	memset(pParams->szBuffer1, 0, 8196);
-	memset(szTemp, 0, sizeof(szTemp));
-	nBytesRecv = recv(pParams->sock, pParams->szBuffer1, 8196, 0);
-	if (SOCKET_ERROR == nBytesRecv)
-	{
-		TRACE("错误：接收3次信息失败，错误代码：%ld\n", WSAGetLastError());
-		return 1;
-	}
-	pParams->szBuffer[nBytesRecv] = 0;
-	sprintf(szTemp, ("RECV3 第%d号线程，接收第3条信息：\"%s\""),
-		pParams->nThreadNo, pParams->szBuffer1);
-	pClient->ShowMessage(szTemp);
 	if (pParams->nThreadNo == pClient->m_nThreads)
 	{
-		pClient->ShowMessage(_T("测试并发 %d 个线程完毕."), pClient->m_nThreads);
+		pClient->ShowMessage(_T("测试并发 %d 个线程完毕."),
+			pClient->m_nThreads);
 	}
 	return 0;
 }
@@ -134,9 +94,10 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 // 建立连接
 bool  CClient::EstablishConnections()
 {
-	DWORD nThreadID;
+	DWORD nThreadID = 0;
+	PCSTR pData = m_strMessage.GetString();
 	m_phWorkerThreads = new HANDLE[m_nThreads];
-	m_pParamsWorker = new WorkerThreadParam[m_nThreads];
+	m_pWorkerParams = new WorkerThreadParam[m_nThreads];
 	// 根据用户设置的线程数量，生成每一个线程连接至服务器，并生成线程发送数据
 	for (int i = 0; i < m_nThreads; i++)
 	{
@@ -147,21 +108,22 @@ bool  CClient::EstablishConnections()
 			return true;
 		}
 		// 向服务器进行连接
-		if (!this->ConnetToServer(&m_pParamsWorker[i].sock,
+		if (!this->ConnetToServer(&m_pWorkerParams[i].sock,
 			m_strServerIP, m_nPort))
 		{
 			ShowMessage(_T("连接服务器失败！"));
-			CleanUp();
-			return false;
+			//CleanUp(); //这里清除后，线程还在用，就崩溃了
+			//return false;
+			continue;
 		}
-		m_pParamsWorker[i].nThreadNo = i + 1;
-		sprintf(m_pParamsWorker[i].szBuffer, "%d号线程 发送数据 %s",
-			i + 1, m_strMessage.GetString());
+		m_pWorkerParams[i].nThreadNo = i + 1;
+		m_pWorkerParams[i].nSendTimes = m_nTimes;
+		sprintf(m_pWorkerParams[i].szSendBuffer, "%s", pData);
 		Sleep(10);
 		// 如果连接服务器成功，就开始建立工作者线程，向服务器发送指定数据
-		m_pParamsWorker[i].pClient = this;
+		m_pWorkerParams[i].pClient = this;
 		m_phWorkerThreads[i] = CreateThread(0, 0, _WorkerThread,
-			(void*)(&m_pParamsWorker[i]), 0, &nThreadID);
+			(void*)(&m_pWorkerParams[i]), 0, &nThreadID);
 	}
 	return true;
 }
@@ -192,8 +154,7 @@ bool CClient::ConnetToServer(SOCKET* pSocket,
 	ZeroMemory((char*)&ServerAddress, sizeof(ServerAddress));
 	ServerAddress.sin_family = AF_INET;
 	CopyMemory((char*)&ServerAddress.sin_addr.s_addr,
-		(char*)Server->h_addr,
-		Server->h_length);
+		(char*)Server->h_addr, Server->h_length);
 	ServerAddress.sin_port = htons(m_nPort);
 	// 开始连接服务器
 	if (SOCKET_ERROR == connect(*pSocket,
@@ -228,8 +189,8 @@ bool CClient::Start()
 	// 建立系统退出的事件通知
 	m_hShutdownEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	// 启动连接线程
-	DWORD nThreadID;
-	ConnectThreadParam* pThreadParams = new ConnectThreadParam;
+	DWORD nThreadID = 0;
+	ConnectionThreadParam* pThreadParams = new ConnectionThreadParam;
 	pThreadParams->pClient = this;
 	m_hConnectionThread = ::CreateThread(0, 0, _ConnectionThread,
 		(void*)pThreadParams, 0, &nThreadID);
@@ -247,7 +208,7 @@ void CClient::Stop()
 	// 关闭所有的Socket
 	for (int i = 0; i < m_nThreads; i++)
 	{
-		closesocket(m_pParamsWorker[i].sock);
+		closesocket(m_pWorkerParams[i].sock);
 	}
 	// 等待所有的工作者线程退出
 	WaitForMultipleObjects(m_nThreads, m_phWorkerThreads, TRUE, INFINITE);
@@ -261,9 +222,9 @@ void CClient::Stop()
 void CClient::CleanUp()
 {
 	if (m_hShutdownEvent == NULL) return;
-	RELEASE_POINTER(m_phWorkerThreads);
+	RELEASE_ARRAY(m_phWorkerThreads);
 	RELEASE_HANDLE(m_hConnectionThread);
-	RELEASE_POINTER(m_pParamsWorker);
+	RELEASE_ARRAY(m_pWorkerParams);
 	RELEASE_HANDLE(m_hShutdownEvent);
 }
 

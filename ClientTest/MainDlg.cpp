@@ -146,6 +146,8 @@ void CMainDlg::InitGUI()
 	SetDlgItemText(IDC_IPADDRESS_SERVER, m_Client.GetLocalIP());
 	// 设置默认端口
 	SetDlgItemInt(IDC_EDIT_PORT, DEFAULT_PORT);
+	// 设置默认的并发线程发送次数
+	SetDlgItemInt(IDC_EDIT_TIMES, DEFAULT_TIMES);
 	// 设置默认的并发线程数
 	SetDlgItemInt(IDC_EDIT_THREADS, DEFAULT_THREADS);
 	// 设置默认发送信息
@@ -170,6 +172,7 @@ void CMainDlg::InitListCtrl()
 void CMainDlg::OnBnClickedOk()
 {
 	int nPort = GetDlgItemInt(IDC_EDIT_PORT);
+	int nTimes = GetDlgItemInt(IDC_EDIT_TIMES);
 	int nThreads = GetDlgItemInt(IDC_EDIT_THREADS);
 	CString strIP, strMessage;
 	GetDlgItemText(IDC_IPADDRESS_SERVER, strIP);
@@ -186,6 +189,7 @@ void CMainDlg::OnBnClickedOk()
 	// 给CClient设置参数
 	m_Client.SetIP(strIP);
 	m_Client.SetPort(nPort);
+	m_Client.SetTimes(nTimes);
 	m_Client.SetThreads(nThreads);
 	m_Client.SetMessage(strMessage);
 	// 开始

@@ -14,6 +14,7 @@ Notes:
 #define DEFAULT_PORT 10240 // 默认端口
 #define DEFAULT_IP _T("127.0.0.1") // 默认IP地址
 #define DEFAULT_THREADS 100 // 默认并发线程数
+#define DEFAULT_TIMES 10000 // 默认发送次数
 #define DEFAULT_MESSAGE _T("Hello!") // 默认的发送信息
 
 class CClient;
@@ -24,12 +25,13 @@ struct WorkerThreadParam
 	CClient* pClient; // 类指针，用于调用类中的函数
 	SOCKET sock; // 每个线程使用的Socket
 	int nThreadNo; // 线程编号
-	char szBuffer[MAX_BUFFER_LEN];
-	char szBuffer1[MAX_BUFFER_LEN];
+	int nSendTimes; // 发送次数
+	char szSendBuffer[MAX_BUFFER_LEN];
+	char szRecvBuffer[MAX_BUFFER_LEN];
 };
 
 // 产生Socket连接的线程
-struct ConnectThreadParam
+struct ConnectionThreadParam
 {
 	CClient* pClient; // 类指针，用于调用类中的函数
 };
@@ -55,6 +57,8 @@ public:
 	void SetIP(const CString& strIP) { m_strServerIP = strIP; }
 	// 设置监听端口
 	void SetPort(const int& nPort) { m_nPort = nPort; }
+	// 设置并发线程发送次数
+	void SetTimes(const int& n) { m_nTimes = n; }
 	// 设置并发线程数量
 	void SetThreads(const int& n) { m_nThreads = n; }
 	// 设置要按发送的信息
@@ -82,10 +86,11 @@ private:
 	CString m_strLocalIP; // 本机IP地址
 	CString m_strMessage; // 发给服务器的信息
 	int m_nPort; // 监听端口
+	int m_nTimes; // 并发线程发送次数
 	int m_nThreads; // 并发线程数量
 	HANDLE* m_phWorkerThreads;
 	HANDLE m_hConnectionThread; // 接受连接的线程句柄
 	HANDLE m_hShutdownEvent; // 用来通知线程系统退出的事件，为了能够更好的退出线程
 
-	WorkerThreadParam* m_pParamsWorker; // 线程参数
+	WorkerThreadParam* m_pWorkerParams; // 线程参数
 };

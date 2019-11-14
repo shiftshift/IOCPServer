@@ -11,10 +11,10 @@
 #define IDC_LIST_INFO                   1001
 #define IDC_EDIT_PORT                   1002
 #define IDC_STATIC_SERVERIP             1003
-#define IDC_EDIT_TIMES                  1007
 #define IDC_STOP                        1004
 #define IDC_EDIT_THREADS                1005
 #define IDC_EDIT_MESSAGE                1006
+#define IDC_EDIT_TIMES                  1007
 
 // Next default values for new objects
 // 
