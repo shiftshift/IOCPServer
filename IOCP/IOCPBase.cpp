@@ -138,7 +138,7 @@ BOOL CIocpBase::InitializeListenSocket()
 		int nErr = GetLastError();
 		return false;
 	}
-	// 提取扩展函数指针
+	// 提取扩展函数指针 win8.1以后才支持
 	DWORD dwBytes = 0;
 	GUID guidAcceptEx = WSAID_ACCEPTEX;
 	GUID guidGetAcceptSockAddrs = WSAID_GETACCEPTEXSOCKADDRS;
@@ -236,6 +236,7 @@ BOOL CIocpBase::PostAccept(SocketContext*& sockContext, IoContext*& ioContext)
 		return false;
 	}
 	// 将接收缓冲置为0,令AcceptEx直接返回,防止拒绝服务攻击
+	//https://docs.microsoft.com/zh-cn/windows/win32/api/mswsock/nf-mswsock-acceptex
 	if (!fnAcceptEx(listenSockContext->connSocket, ioContext->hSocket,
 		ioContext->wsaBuf.buf, 0, sizeof(sockaddr_in) + 16,
 		sizeof(sockaddr_in) + 16, &dwBytes, &ioContext->overLapped))

@@ -286,8 +286,9 @@ protected:
 	LONG connectCount; // 当前的连接数量
 	LONG acceptPostCount; // 当前投递的的Accept数量
 
-	LPFN_ACCEPTEX fnAcceptEx; //AcceptEx函数指针
-	//GetAcceptExSockAddrs;函数指针
+	//AcceptEx函数指针,win8.1以后才支持
+	LPFN_ACCEPTEX fnAcceptEx; 
+	//GetAcceptExSockAddrs函数指针,win8.1以后才支持
 	LPFN_GETACCEPTEXSOCKADDRS fnGetAcceptExSockAddrs;
 
 private:
