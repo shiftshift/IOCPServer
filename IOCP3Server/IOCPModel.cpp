@@ -21,21 +21,21 @@
 
 
 
-CIOCPModel::CIOCPModel(void):
-							m_nThreads(0),
-							m_hShutdownEvent(NULL),
-							m_hIOCompletionPort(NULL),
-							m_phWorkerThreads(NULL),
-							m_strIP(DEFAULT_IP),
-							m_nPort(DEFAULT_PORT),
-							m_pMain(NULL),
-							m_lpfnAcceptEx( NULL ),
-							m_pListenContext( NULL )
+CIocpModel::CIocpModel(void):
+	m_nThreads(0),
+	m_hShutdownEvent(NULL),
+	m_hIOCompletionPort(NULL),
+	m_phWorkerThreads(NULL),
+	m_strIP(DEFAULT_IP),
+	m_nPort(DEFAULT_PORT),
+	m_pMain(NULL),
+	m_lpfnAcceptEx( NULL ),
+	m_pListenContext( NULL )
 {
 }
 
 
-CIOCPModel::~CIOCPModel(void)
+CIocpModel::~CIocpModel(void)
 {
 	// 确保资源彻底释放
 	this->Stop();
@@ -54,10 +54,10 @@ CIOCPModel::~CIOCPModel(void)
 *函数说明：GetQueuedCompletionStatus正确返回时表示某操作已经完成，第二个参数lpNumberOfBytes表示本次套接字传输的字节数，
 参数lpCompletionKey和lpOverlapped包含重要的信息，请查询MSDN文档；
 *********************************************************************/
-DWORD WINAPI CIOCPModel::_WorkerThread(LPVOID lpParam)
+DWORD WINAPI CIocpModel::_WorkerThread(LPVOID lpParam)
 {    
-	THREADPARAMS_WORKER* pParam = (THREADPARAMS_WORKER*)lpParam;
-	CIOCPModel* pIOCPModel = (CIOCPModel*)pParam->pIOCPModel;
+	WorkerThreadParam* pParam = (WorkerThreadParam*)lpParam;
+	CIocpModel* pIOCPModel = (CIocpModel*)pParam->pIocpModel;
 	int nThreadNo = (int)pParam->nThreadNo;
 
 	pIOCPModel->_ShowMessage("工作者线程启动，ID: %d.",nThreadNo);
@@ -182,7 +182,7 @@ DWORD WINAPI CIOCPModel::_WorkerThread(LPVOID lpParam)
 ////////////////////////////////////////////////////////////////////
 // 初始化WinSock 2.2
 //函数功能：初始化套接字
-bool CIOCPModel::LoadSocketLib()
+bool CIocpModel::LoadSocketLib()
 {    
 	WSADATA wsaData;
 	int nResult;
@@ -199,7 +199,7 @@ bool CIOCPModel::LoadSocketLib()
 
 
 //函数功能：启动服务器
-bool CIOCPModel::Start()
+bool CIocpModel::Start()
 {
 	// 初始化线程互斥量
 	InitializeCriticalSection(&m_csContextList);
@@ -238,7 +238,7 @@ bool CIOCPModel::Start()
 
 ////////////////////////////////////////////////////////////////////
 //	开始发送系统退出消息，退出完成端口和线程资源
-void CIOCPModel::Stop()
+void CIocpModel::Stop()
 {
 	if( m_pListenContext!=NULL && m_pListenContext->m_Socket!=INVALID_SOCKET )
 	{
@@ -268,9 +268,9 @@ void CIOCPModel::Stop()
 /*************************************************************
 *函数功能：投递WSARecv请求；
 *函数参数：
-PER_IO_CONTEXT* pIoContext:	用于进行IO的套接字上的结构，主要为WSARecv参数和WSASend参数；
+IoContext* pIoContext:	用于进行IO的套接字上的结构，主要为WSARecv参数和WSASend参数；
 **************************************************************/
-bool CIOCPModel::PostRecv( IoContext* pIoContext )
+bool CIocpModel::PostRecv( IoContext* pIoContext )
 {
 	// 初始化变量
 	DWORD dwFlags = 0;
@@ -299,10 +299,10 @@ bool CIOCPModel::PostRecv( IoContext* pIoContext )
 /*************************************************************
 *函数功能：投递WSASend请求
 *函数参数：
-PER_IO_CONTEXT* pIoContext:	用于进行IO的套接字上的结构，主要为WSARecv参数和WSASend参数
+IoContext* pIoContext:	用于进行IO的套接字上的结构，主要为WSARecv参数和WSASend参数
 *函数说明：调用PostWrite之前需要设置pIoContext中m_wsaBuf, m_nTotalBytes, m_nSendBytes；
 **************************************************************/
-bool CIOCPModel::PostWrite(IoContext* pIoContext)
+bool CIocpModel::PostWrite(IoContext* pIoContext)
 {
 	// 初始化变量
 	DWORD dwFlags = 0;
@@ -328,7 +328,7 @@ bool CIOCPModel::PostWrite(IoContext* pIoContext)
 
 ////////////////////////////////
 // 初始化完成端口
-bool CIOCPModel::_InitializeIOCP()
+bool CIocpModel::_InitializeIOCP()
 {
 	// 建立第一个完成端口
 	m_hIOCompletionPort = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0 );
@@ -349,8 +349,8 @@ bool CIOCPModel::_InitializeIOCP()
 	DWORD nThreadID;
 	for (int i = 0; i < m_nThreads; i++)
 	{
-		THREADPARAMS_WORKER* pThreadParams = new THREADPARAMS_WORKER;
-		pThreadParams->pIOCPModel = this;
+		WorkerThreadParam* pThreadParams = new WorkerThreadParam;
+		pThreadParams->pIocpModel = this;
 		pThreadParams->nThreadNo  = i+1;
 		m_phWorkerThreads[i] = ::CreateThread(0, 0, _WorkerThread, (void *)pThreadParams, 0, &nThreadID);
 	}
@@ -363,7 +363,7 @@ bool CIOCPModel::_InitializeIOCP()
 
 /////////////////////////////////////////////////////////////////
 // 初始化Socket
-bool CIOCPModel::_InitializeListenSocket()
+bool CIocpModel::_InitializeListenSocket()
 {
 	// AcceptEx 和 GetAcceptExSockaddrs 的GUID，用于导出函数指针
 	GUID GuidAcceptEx = WSAID_ACCEPTEX;  
@@ -488,7 +488,7 @@ bool CIOCPModel::_InitializeListenSocket()
 
 ////////////////////////////////////////////////////////////
 //	最后释放掉所有资源
-void CIOCPModel::_DeInitialize()
+void CIocpModel::_DeInitialize()
 {
 	// 删除客户端列表的互斥量
 	DeleteCriticalSection(&m_csContextList);
@@ -523,7 +523,7 @@ void CIOCPModel::_DeInitialize()
 
 //////////////////////////////////////////////////////////////////
 // 投递Accept请求
-bool CIOCPModel::_PostAccept( IoContext* pAcceptIoContext )
+bool CIocpModel::_PostAccept( IoContext* pAcceptIoContext )
 {
 	ASSERT( INVALID_SOCKET!=m_pListenContext->m_Socket );
 
@@ -566,10 +566,10 @@ bool CIOCPModel::_PostAccept( IoContext* pAcceptIoContext )
 *函数功能：函数进行客户端接入处理；
 *参数说明：
 SocketContext* pSocketContext:	本次accept操作对应的套接字，该套接字所对应的数据结构；
-PER_IO_CONTEXT* pIoContext:			本次accept操作对应的数据结构；
-DWORD		dwIOSize:				本次操作数据实际传输的字节数
+IoContext* pIoContext:			本次accept操作对应的数据结构；
+DWORD		dwIOSize:			本次操作数据实际传输的字节数
 ********************************************************************/
-bool CIOCPModel::_DoAccpet( SocketContext* pSocketContext, IoContext* pIoContext )
+bool CIocpModel::_DoAccpet( SocketContext* pSocketContext, IoContext* pIoContext )
 {
 	
 	if (pIoContext->m_nTotalBytes > 0)
@@ -593,10 +593,9 @@ bool CIOCPModel::_DoAccpet( SocketContext* pSocketContext, IoContext* pIoContext
 
 /*************************************************************
 *函数功能：AcceptEx接收客户连接成功，接收客户第一次发送的数据，故投递WSASend请求
-*函数参数：
-PER_IO_CONTEXT* pIoContext:	用于监听套接字上的操作
+*函数参数：IoContext* pIoContext:	用于监听套接字上的操作
 **************************************************************/
-bool CIOCPModel::_DoFirstRecvWithData(IoContext* pIoContext)
+bool CIocpModel::_DoFirstRecvWithData(IoContext* pIoContext)
 {
 	SOCKADDR_IN* ClientAddr = NULL;
 	SOCKADDR_IN* LocalAddr = NULL;  
@@ -652,13 +651,13 @@ bool CIOCPModel::_DoFirstRecvWithData(IoContext* pIoContext)
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	// 5. 使用完毕之后，把Listen Socket的那个IoContext重置，然后准备投递新的AcceptEx
 	//pIoContext->ResetBuffer();
-	//return this->_PostAccept( pIoContext );
+	//return this->_PostAccept(pIoContext );
 	return true; 	
 }
 
 ////////////////////////////////////////////////////////////////////
 // 投递接收数据请求
-/*bool CIOCPModel::_PostRecv( PER_IO_CONTEXT* pIoContext )
+/*bool CIocpModel::_PostRecv(IoContext* pIoContext )
 {
 	// 初始化变量
 	DWORD dwFlags = 0;
@@ -683,10 +682,9 @@ bool CIOCPModel::_DoFirstRecvWithData(IoContext* pIoContext)
 
 /*************************************************************
 *函数功能：AcceptEx接收客户连接成功，此时并未接收到数据，故投递WSARecv请求
-*函数参数：
-PER_IO_CONTEXT* pIoContext:	用于监听套接字上的操作
+*函数参数：pIoContext:	用于监听套接字上的操作
 **************************************************************/
-bool CIOCPModel::_DoFirstRecvWithoutData(IoContext* pIoContext )
+bool CIocpModel::_DoFirstRecvWithoutData(IoContext* pIoContext )
 {
 	//为新接入的套接字创建SocketContext结构，并绑定到完成端口
 	SocketContext* pNewSocketContext = new SocketContext;
@@ -723,7 +721,7 @@ bool CIOCPModel::_DoFirstRecvWithoutData(IoContext* pIoContext )
 
 /////////////////////////////////////////////////////////////////
 // 在有接收的数据到达的时候，进行处理
-bool CIOCPModel::_DoRecv( SocketContext* pSocketContext, IoContext* pIoContext )
+bool CIocpModel::_DoRecv( SocketContext* pSocketContext, IoContext* pIoContext )
 {
 	// 先把上一次的数据显示出现，然后就重置状态，发出下一个Recv请求
 	SOCKADDR_IN* ClientAddr = &pSocketContext->m_ClientAddr;
@@ -744,7 +742,7 @@ bool CIOCPModel::_DoRecv( SocketContext* pSocketContext, IoContext* pIoContext )
 
 /////////////////////////////////////////////////////
 // 将句柄(Socket)绑定到完成端口中
-bool CIOCPModel::_AssociateWithIOCP( SocketContext *pContext )
+bool CIocpModel::_AssociateWithIOCP( SocketContext *pContext )
 {
 	// 将用于和客户端通信的SOCKET绑定到完成端口中
 	HANDLE hTemp = CreateIoCompletionPort((HANDLE)pContext->m_Socket, m_hIOCompletionPort, (DWORD)pContext, 0);
@@ -770,7 +768,7 @@ bool CIOCPModel::_AssociateWithIOCP( SocketContext *pContext )
 
 //////////////////////////////////////////////////////////////
 // 将客户端的相关信息存储到数组中
-void CIOCPModel::_AddToContextList( SocketContext *pHandleData )
+void CIocpModel::_AddToContextList( SocketContext *pHandleData )
 {
 	EnterCriticalSection(&m_csContextList);
 
@@ -781,7 +779,7 @@ void CIOCPModel::_AddToContextList( SocketContext *pHandleData )
 
 ////////////////////////////////////////////////////////////////
 //	移除某个特定的Context
-void CIOCPModel::_RemoveContext( SocketContext *pSocketContext )
+void CIocpModel::_RemoveContext( SocketContext *pSocketContext )
 {
 	EnterCriticalSection(&m_csContextList);
 
@@ -800,7 +798,7 @@ void CIOCPModel::_RemoveContext( SocketContext *pSocketContext )
 
 ////////////////////////////////////////////////////////////////
 // 清空客户端信息
-void CIOCPModel::_ClearContextList()
+void CIocpModel::_ClearContextList()
 {
 	EnterCriticalSection(&m_csContextList);
 
@@ -826,7 +824,7 @@ void CIOCPModel::_ClearContextList()
 
 ////////////////////////////////////////////////////////////////////
 // 获得本机的IP地址
-CString CIOCPModel::GetLocalIP()
+CString CIocpModel::GetLocalIP()
 {
 	// 获得本机主机名
 	char hostname[MAX_PATH] = {0};
@@ -850,7 +848,7 @@ CString CIOCPModel::GetLocalIP()
 
 ///////////////////////////////////////////////////////////////////
 // 获得本机中处理器的数量
-int CIOCPModel::_GetNoOfProcessors()
+int CIocpModel::_GetNoOfProcessors()
 {
 	SYSTEM_INFO si;
 
@@ -861,7 +859,7 @@ int CIOCPModel::_GetNoOfProcessors()
 
 /////////////////////////////////////////////////////////////////////
 // 在主界面中显示提示信息
-void CIOCPModel::_ShowMessage(const CString szFormat,...) const
+void CIocpModel::_ShowMessage(const CString szFormat,...) const
 {
 	// 根据传入的参数格式化字符串
 	CString   strMessage;
@@ -886,7 +884,7 @@ void CIOCPModel::_ShowMessage(const CString szFormat,...) const
 // 使用的方法是尝试向这个socket发送数据，判断这个socket调用的返回值
 // 因为如果客户端网络异常断开(例如客户端崩溃或者拔掉网线等)的时候，服务器端是无法收到客户端断开的通知的
 
-bool CIOCPModel::_IsSocketAlive(SOCKET s)
+bool CIocpModel::_IsSocketAlive(SOCKET s)
 {
 	int nByteSent=send(s,"",0,0);
 	if (-1 == nByteSent) 
@@ -896,7 +894,7 @@ bool CIOCPModel::_IsSocketAlive(SOCKET s)
 
 ///////////////////////////////////////////////////////////////////
 //函数功能：显示并处理完成端口上的错误
-bool CIOCPModel::HandleError( SocketContext *pContext,const DWORD& dwErr )
+bool CIocpModel::HandleError( SocketContext *pContext,const DWORD& dwErr )
 {
 	// 如果是超时了，就再继续等吧  
 	if(WAIT_TIMEOUT == dwErr)  

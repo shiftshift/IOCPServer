@@ -50,7 +50,6 @@ namespace MyServer
 		int nThreadNo; //œﬂ≥Ã±‡∫≈
 	};
 
-	// CIOCPModel¿‡
 	class CIocpModel 
 	{
 	public:

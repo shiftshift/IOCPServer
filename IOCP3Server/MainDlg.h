@@ -41,7 +41,7 @@ private:
 
 public:
 	// 当前客户端有新消息到来的时候，在主界面中显示
-	//		新到来的信息(在类CIOCPModel中调用)
+	//		新到来的信息(在类CIocpModel中调用)
 	// 为了减少界面代码对效率的影响，此处使用了内联
 	inline void AddInformation(const CString strInfo)
 	{
@@ -50,5 +50,5 @@ public:
 	}
 
 private:
-	CIOCPModel m_IOCP;// 主要对象，完成端口模型
+	CIocpModel m_IOCP;// 主要对象，完成端口模型
 };

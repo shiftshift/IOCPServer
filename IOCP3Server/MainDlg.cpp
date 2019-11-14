@@ -1,4 +1,4 @@
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "IOCPServer.h"
 #include "MainDlg.h"
 #ifdef _DEBUG

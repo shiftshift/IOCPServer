@@ -32,7 +32,7 @@ protected:
 	DECLARE_MESSAGE_MAP()
 
 public:
-	// 为主界面添加信息信息(在类CIOCPModel中调用)
+	// 为主界面添加信息信息(在类CIocpModel中调用)
 	// 为了减少界面代码对效率的影响，此处使用了内联
 	inline void AddInformation(const CString strInfo)
 	{
