@@ -8,7 +8,7 @@ class CMainDlg : public CDialog
 public:
 	CMainDlg(CWnd* pParent = NULL);	// 标准构造函数
 
-	enum { IDD = IDD_PIGGYIOCPSERVER_DIALOG };
+	enum { IDD = IDD_SERVER_DIALOG };
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);

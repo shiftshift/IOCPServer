@@ -16,7 +16,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{E7FB7813-68D6-41D5-8B02-DACF1B8F9510}</ProjectGuid>
-    <RootNamespace>PiggyIOCPServer</RootNamespace>
+    <RootNamespace>IOCPServer</RootNamespace>
     <Keyword>MFCProj</Keyword>
     <ProjectName>IOCP3Server</ProjectName>
   </PropertyGroup>
