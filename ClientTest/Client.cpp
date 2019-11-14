@@ -114,7 +114,7 @@ bool  CClient::EstablishConnections()
 			ShowMessage(_T("连接服务器失败！"));
 			//CleanUp(); //这里清除后，线程还在用，就崩溃了
 			//return false;
-			continue;
+			break;
 		}
 		m_pWorkerParams[i].nThreadNo = i + 1;
 		m_pWorkerParams[i].nSendTimes = m_nTimes;

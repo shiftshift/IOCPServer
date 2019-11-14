@@ -97,16 +97,16 @@ BEGIN
     PUSHBUTTON      "退出",IDCANCEL,217,217,50,14
     PUSHBUTTON      "停止测试",IDC_STOP,139,217,50,14,WS_DISABLED
     CONTROL         "",IDC_LIST_INFO,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,7,68,305,141
-    LTEXT           "服务器IP地址：",IDC_STATIC,17,21,48,8
-    RTEXT           "连接端口：",IDC_STATIC,222,15,35,8
-    EDITTEXT        IDC_EDIT_PORT,258,12,40,14,ES_AUTOHSCROLL
-    CONTROL         "",IDC_IPADDRESS_SERVER,"SysIPAddress32",WS_TABSTOP,65,19,134,15
-    RTEXT           "并发线程数：",IDC_STATIC,215,31,42,8
-    RTEXT           "重复发送次数：",IDC_STATIC,201,47,56,8
-    LTEXT           "发送信息：",IDC_STATIC,19,44,35,8
-    EDITTEXT        IDC_EDIT_TIMES,258,44,40,14,ES_AUTOHSCROLL
-    EDITTEXT        IDC_EDIT_THREADS,258,28,40,14,ES_AUTOHSCROLL
-    EDITTEXT        IDC_EDIT_MESSAGE,65,41,135,14,ES_AUTOHSCROLL
+    CTEXT           "服务器IP：",IDC_STATIC,19,20,35,8
+    RTEXT           "端口：",IDC_STATIC,135,20,22,8
+    EDITTEXT        IDC_EDIT_PORT,157,18,40,14,ES_AUTOHSCROLL
+    CONTROL         "",IDC_IPADDRESS_SERVER,"SysIPAddress32",WS_TABSTOP,55,17,71,15
+    RTEXT           "并发线程数：",IDC_STATIC,215,20,42,8
+    RTEXT           "重复发送次数：",IDC_STATIC,201,42,56,8
+    CTEXT           "发送信息：",IDC_STATIC,19,42,35,8
+    EDITTEXT        IDC_EDIT_TIMES,258,39,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT_THREADS,258,18,40,14,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT_MESSAGE,55,39,142,14,ES_AUTOHSCROLL
     GROUPBOX        "参数设置",IDC_STATIC,7,5,305,57
 END
 
@@ -133,13 +133,13 @@ BEGIN
     BEGIN
         BLOCK "080403a8"
         BEGIN
-            VALUE "CompanyName", "TODO: <公司名>"
-            VALUE "FileDescription", "TODO: <文件说明>"
+            VALUE "CompanyName", "<杭州山不高>"
+            VALUE "FileDescription", "本文件用于对服务器进行压力测试，同时开启很多个线程，去连接指定服务器的指定端口，并且狂发数据。"
             VALUE "FileVersion", "1.0.0.1"
             VALUE "InternalName", "ClientTest.exe"
-            VALUE "LegalCopyright", "TODO: (C) <公司名>。保留所有权利。"
+            VALUE "LegalCopyright", "(C) <GaoJS>。保留所有权利。"
             VALUE "OriginalFilename", "ClientTest.exe"
-            VALUE "ProductName", "TODO: <产品名>"
+            VALUE "ProductName", "服务器压力测试工具"
             VALUE "ProductVersion", "1.0.0.1"
         END
     END
