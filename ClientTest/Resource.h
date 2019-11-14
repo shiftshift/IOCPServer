@@ -1,11 +1,11 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by PiggyStressTestClient.rc
+// Used by ClientTest.rc
 //
 #define IDM_ABOUTBOX                    0x0010
 #define IDD_ABOUTBOX                    100
 #define IDS_ABOUTBOX                    101
-#define IDD_PIGGYSTRESSTESTCLIENT_DIALOG 102
+#define IDD_CLIENT_DIALOG 102
 #define IDR_MAINFRAME                   128
 #define IDC_IPADDRESS_SERVER            1000
 #define IDC_LIST_INFO                   1001

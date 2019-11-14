@@ -54,7 +54,7 @@ BEGIN
     "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)\r\n"
     "LANGUAGE 4, 2\r\n"
     "#pragma code_page(936)\r\n"
-    "#include ""res\\PiggyStressTestClient.rc2""  // 非 Microsoft Visual C++ 编辑的资源\r\n"
+    "#include ""res\\ClientTest.rc2""  // 非 Microsoft Visual C++ 编辑的资源\r\n"
     "#include ""l.CHS\\afxres.rc""      // 标准组件\r\n"
     "#endif\r\n"
     "\0"
@@ -70,7 +70,7 @@ END
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDR_MAINFRAME           ICON                    "res\\PiggyStressTestClient.ico"
+IDR_MAINFRAME           ICON                    "res\\ClientTest.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -79,19 +79,19 @@ IDR_MAINFRAME           ICON                    "res\\PiggyStressTestClient.ico"
 
 IDD_ABOUTBOX DIALOGEX 0, 0, 170, 62
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "关于 PiggyStressTestClient"
+CAPTION "关于 ClientTest"
 FONT 9, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,14,14,21,20
-    LTEXT           "PiggyStressTestClient，1.0 版",IDC_STATIC,42,14,114,8,SS_NOPREFIX
-    LTEXT           "Copyright (C) 2009 PiggyXP【小猪】",IDC_STATIC,42,26,114,8
+    LTEXT           "ClientTest，1.0 版",IDC_STATIC,42,14,114,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2009",IDC_STATIC,42,26,114,8
     DEFPUSHBUTTON   "确定",IDOK,113,41,50,14,WS_GROUP
 END
 
-IDD_PIGGYSTRESSTESTCLIENT_DIALOG DIALOGEX 0, 0, 319, 238
+IDD_CLIENT_DIALOG DIALOGEX 0, 0, 319, 238
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_MINIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_APPWINDOW
-CAPTION "服务器压力测试工具 - By PiggyXP【小猪】"
+CAPTION "服务器压力测试工具"
 FONT 9, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "开始测试",IDOK,59,217,50,14
@@ -135,9 +135,9 @@ BEGIN
             VALUE "CompanyName", "TODO: <公司名>"
             VALUE "FileDescription", "TODO: <文件说明>"
             VALUE "FileVersion", "1.0.0.1"
-            VALUE "InternalName", "PiggyStressTestClient.exe"
+            VALUE "InternalName", "ClientTest.exe"
             VALUE "LegalCopyright", "TODO: (C) <公司名>。保留所有权利。"
-            VALUE "OriginalFilename", "PiggyStressTestClient.exe"
+            VALUE "OriginalFilename", "ClientTest.exe"
             VALUE "ProductName", "TODO: <产品名>"
             VALUE "ProductVersion", "1.0.0.1"
         END
@@ -165,7 +165,7 @@ BEGIN
         BOTTOMMARGIN, 55
     END
 
-    IDD_PIGGYSTRESSTESTCLIENT_DIALOG, DIALOG
+    IDD_CLIENT_DIALOG, DIALOG
     BEGIN
         LEFTMARGIN, 7
         RIGHTMARGIN, 312
@@ -183,7 +183,7 @@ END
 
 STRINGTABLE 
 BEGIN
-    IDS_ABOUTBOX            "关于 PiggyStressTestClient(&A)..."
+    IDS_ABOUTBOX            "关于 ClientTest(&A)..."
 END
 
 #endif    // Chinese (P.R.C.) resources
@@ -204,7 +204,7 @@ END
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
 LANGUAGE 4, 2
 #pragma code_page(936)
-#include "res\PiggyStressTestClient.rc2"  // 非 Microsoft Visual C++ 编辑的资源
+#include "res\ClientTest.rc2"  // 非 Microsoft Visual C++ 编辑的资源
 #include "l.CHS\afxres.rc"      // 标准组件
 #endif
 
