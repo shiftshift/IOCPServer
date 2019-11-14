@@ -31,7 +31,8 @@ namespace MyServer{
 	/*********************************************************************
 	*函数功能：线程函数，根据GetQueuedCompletionStatus返回情况进行处理；
 	*函数参数：lpParam是THREADPARAMS_WORKER类型指针；
-	*函数说明：GetQueuedCompletionStatus正确返回时表示某操作已经完成，第二个参数lpNumberOfBytes表示本次套接字传输的字节数，
+	*函数说明：GetQueuedCompletionStatus正确返回时表示某操作已经完成，
+		第二个参数lpNumberOfBytes表示本次套接字传输的字节数，
 	参数lpCompletionKey和lpOverlapped包含重要的信息，请查询MSDN文档；
 	*********************************************************************/
 	DWORD WINAPI CIOCPModel::_WorkerThread(LPVOID lpParam){    
@@ -79,8 +80,11 @@ namespace MyServer{
 				PER_IO_CONTEXT* pIoContext = CONTAINING_RECORD(pOverlapped, PER_IO_CONTEXT, m_Overlapped);  
 
 				// 判断是否有客户端断开了
-				if((dwBytesTransfered == 0) && ( pIoContext->m_OpType == RECV_POSTED || pIoContext->m_OpType == SEND_POSTED))  {  
-					sprintf_s(aa,"客户端 %s:%d 断开连接.",inet_ntoa(pSocketContext->m_ClientAddr.sin_addr), ntohs(pSocketContext->m_ClientAddr.sin_port));
+				if((dwBytesTransfered == 0) && ( pIoContext->m_OpType == RECV_POSTED 
+					|| pIoContext->m_OpType == SEND_POSTED))  
+				{  
+					sprintf_s(aa,"客户端 %s:%d 断开连接.",inet_ntoa(pSocketContext->m_ClientAddr.sin_addr), 
+						ntohs(pSocketContext->m_ClientAddr.sin_port));
 					g_pServerEngine->AddServerMsgs(string(aa));
 
 					// 释放掉对应的资源
@@ -334,7 +338,8 @@ namespace MyServer{
 		}
 
 		// 将Listen Socket绑定至完成端口中
-		if( NULL== CreateIoCompletionPort( (HANDLE)m_pListenContext->m_Socket, m_hIOCompletionPort,(DWORD)m_pListenContext, 0))  {  
+		if( NULL== CreateIoCompletionPort( (HANDLE)m_pListenContext->m_Socket, 
+			m_hIOCompletionPort,(DWORD)m_pListenContext, 0))  {  
 			//this->_ShowMessage("绑定 Listen Socket至完成端口失败！错误代码: %d/n", WSAGetLastError());  
 			char aa[256];
 			sprintf_s(aa,"绑定 Listen Socket至完成端口失败！错误代码: %d!\n", WSAGetLastError());
@@ -356,7 +361,8 @@ namespace MyServer{
 		ServerAddress.sin_port = htons(m_nPort);                          
 
 		// 绑定地址和端口
-		if (SOCKET_ERROR == bind(m_pListenContext->m_Socket, (struct sockaddr *) &ServerAddress, sizeof(ServerAddress))) {
+		if (SOCKET_ERROR == bind(m_pListenContext->m_Socket,
+			(struct sockaddr *) &ServerAddress, sizeof(ServerAddress))) {
 			g_pServerEngine->AddServerMsgs(string("bind()函数执行错误.\n"));
 			return false;
 		}else{
@@ -490,7 +496,8 @@ namespace MyServer{
 		} 
 
 		// 投递AcceptEx
-		if(FALSE == m_lpfnAcceptEx( m_pListenContext->m_Socket, pAcceptIoContext->m_sockAccept, p_wbuf->buf, p_wbuf->len - ((sizeof(SOCKADDR_IN)+16)*2),   
+		if(FALSE == m_lpfnAcceptEx( m_pListenContext->m_Socket, pAcceptIoContext->m_sockAccept,
+			p_wbuf->buf, p_wbuf->len - ((sizeof(SOCKADDR_IN)+16)*2),   
 									sizeof(SOCKADDR_IN)+16, sizeof(SOCKADDR_IN)+16, &dwBytes, p_ol))  {  
 			if(WSAGetLastError() != WSA_IO_PENDING)  {  
 				char aa[256];
@@ -534,7 +541,8 @@ namespace MyServer{
 		//输出接收的数据
 		SOCKADDR_IN* ClientAddr = &pSocketContext->m_ClientAddr;
 		char aa[256];
-		sprintf_s(aa,"收到  %s:%d 信息：%s",inet_ntoa(ClientAddr->sin_addr), ntohs(ClientAddr->sin_port),pIoContext->m_wsaBuf.buf );
+		sprintf_s(aa,"收到  %s:%d 信息：%s",inet_ntoa(ClientAddr->sin_addr), 
+			ntohs(ClientAddr->sin_port),pIoContext->m_wsaBuf.buf );
 		g_pServerEngine->AddServerMsgs(string(aa));
 
 		//发送数据
@@ -557,12 +565,15 @@ namespace MyServer{
 		int remoteLen = sizeof(SOCKADDR_IN), localLen = sizeof(SOCKADDR_IN);  
 
 		//1. 首先取得连入客户端的地址信息
-		this->m_lpfnGetAcceptExSockAddrs(pIoContext->m_wsaBuf.buf, pIoContext->m_wsaBuf.len - ((sizeof(SOCKADDR_IN)+16)*2),  
-			sizeof(SOCKADDR_IN)+16, sizeof(SOCKADDR_IN)+16, (LPSOCKADDR*)&LocalAddr, &localLen, (LPSOCKADDR*)&ClientAddr, &remoteLen);  
+		this->m_lpfnGetAcceptExSockAddrs(pIoContext->m_wsaBuf.buf,
+			pIoContext->m_wsaBuf.len - ((sizeof(SOCKADDR_IN)+16)*2),  
+			sizeof(SOCKADDR_IN)+16, sizeof(SOCKADDR_IN)+16, 
+			(LPSOCKADDR*)&LocalAddr, &localLen, (LPSOCKADDR*)&ClientAddr, &remoteLen);  
 
 		//显示客户端信息
 		char aa[256];
-		sprintf_s(aa,"客户端 %s:%d 信息：%s.",inet_ntoa(ClientAddr->sin_addr), ntohs(ClientAddr->sin_port),pIoContext->m_wsaBuf.buf);
+		sprintf_s(aa,"客户端 %s:%d 信息：%s.",inet_ntoa(ClientAddr->sin_addr), 
+			ntohs(ClientAddr->sin_port),pIoContext->m_wsaBuf.buf);
 		g_pServerEngine->AddServerMsgs(string(aa));
 
 
@@ -584,7 +595,8 @@ namespace MyServer{
 		pNewIoContext->m_nTotalBytes  = pIoContext->m_nTotalBytes;
 		pNewIoContext->m_nSendBytes   = 0;
 		pNewIoContext->m_wsaBuf.len	  = pIoContext->m_nTotalBytes;
-		memcpy(pNewIoContext->m_wsaBuf.buf, pIoContext->m_wsaBuf.buf, pIoContext->m_nTotalBytes);	//复制数据到WSASend函数的参数缓冲区
+		memcpy(pNewIoContext->m_wsaBuf.buf, pIoContext->m_wsaBuf.buf,
+			pIoContext->m_nTotalBytes);	//复制数据到WSASend函数的参数缓冲区
 
 		//此时是第一次接收数据成功，所以这里投递PostWrite，向客户端发送数据
 		if( this->PostWrite( pNewIoContext) == false ){
@@ -639,9 +651,11 @@ namespace MyServer{
 
 	/////////////////////////////////////////////////////
 	// 将句柄(Socket)绑定到完成端口中
-	bool CIOCPModel::_AssociateWithIOCP( PER_SOCKET_CONTEXT *pContext ){
+	bool CIOCPModel::_AssociateWithIOCP( PER_SOCKET_CONTEXT *pContext )
+	{
 		// 将用于和客户端通信的SOCKET绑定到完成端口中
-		HANDLE hTemp = CreateIoCompletionPort((HANDLE)pContext->m_Socket, m_hIOCompletionPort, (DWORD)pContext, 0);
+		HANDLE hTemp = CreateIoCompletionPort((HANDLE)pContext->m_Socket,
+			m_hIOCompletionPort, (DWORD)pContext, 0);
 
 		if ( hTemp == NULL){
 			char aa[256];
@@ -649,12 +663,9 @@ namespace MyServer{
 			g_pServerEngine->AddServerMsgs(string(aa));
 			return false;
 		}
-
 		return true;
 	}
-
-
-
+	   
 	//////////////////////////////////////////////////////////////
 	// 将客户端的相关信息存储到数组中
 	void CIOCPModel::_AddToContextList( PER_SOCKET_CONTEXT *pHandleData ){
@@ -772,9 +783,4 @@ namespace MyServer{
 			return false;
 		}
 	}
-
 }
-
-
-
-

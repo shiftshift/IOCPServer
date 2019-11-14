@@ -2,13 +2,11 @@
 原创作者：http://blog.csdn.net/piggyxp/article/details/6922277
 修改时间：2013年02月28日18:00:00
 **********************************************************/
-
 #pragma once
-
 #include <winsock2.h>
 #include <MSWSock.h>
 #include <vector>
-
+#include <string>
 
 #include "PER_SOCKET_CONTEXT.h"
 
@@ -101,9 +99,5 @@ namespace MyServer{
 		int _GetNoOfProcessors();//获得本机的处理器数量
 
 		static DWORD WINAPI _WorkerThread(LPVOID lpParam);//线程函数，为IOCP请求服务的工作者线程
-
-
 	};
-
-
 }
