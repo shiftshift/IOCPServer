@@ -18,7 +18,7 @@
     <ProjectGuid>{E7FB7813-68D6-41D5-8B02-DACF1B8F9510}</ProjectGuid>
     <RootNamespace>PiggyIOCPServer</RootNamespace>
     <Keyword>MFCProj</Keyword>
-    <ProjectName>IOCPServer</ProjectName>
+    <ProjectName>IOCP3Server</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
