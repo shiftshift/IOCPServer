@@ -72,7 +72,7 @@ private:
 	// 建立连接
 	bool EstablishConnections();
 	// 向服务器进行连接
-	bool ConnetToServer(SOCKET* pSocket, CString strServer, int nPort);
+	bool ConnetToServer(SOCKET& pSocket, CString strServer, int nPort);
 	// 用于建立连接的线程
 	static DWORD WINAPI _ConnectionThread(LPVOID lpParam);
 	// 用于发送信息的线程
@@ -90,7 +90,7 @@ private:
 	int m_nThreads; // 并发线程数量
 	HANDLE* m_phWorkerThreads;
 	HANDLE m_hConnectionThread; // 接受连接的线程句柄
-	HANDLE m_hShutdownEvent; // 用来通知线程系统退出的事件，为了能够更好的退出线程
+	HANDLE m_hShutdownEvent; // 通知线程，为了更好的退出线程
 
 	WorkerThreadParam* m_pWorkerParams; // 线程参数
 };

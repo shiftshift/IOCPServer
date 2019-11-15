@@ -80,7 +80,7 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 		sprintf(szTemp, ("RECV: Msg:[%d] Thread[%d], Data[%s]"),
 			i, pParams->nThreadNo, pParams->szRecvBuffer);
 		pClient->ShowMessage(szTemp);
-		Sleep(1000);
+		Sleep(100);
 	}
 
 	if (pParams->nThreadNo == pClient->m_nThreads)
@@ -92,12 +92,14 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 }
 ///////////////////////////////////////////////////////////////////////////////////
 // 建立连接
-bool  CClient::EstablishConnections()
+bool CClient::EstablishConnections()
 {
 	DWORD nThreadID = 0;
 	PCSTR pData = m_strMessage.GetString();
 	m_phWorkerThreads = new HANDLE[m_nThreads];
 	m_pWorkerParams = new WorkerThreadParam[m_nThreads];
+	memset(m_phWorkerThreads, 0, sizeof(HANDLE) * m_nThreads);
+	memset(m_pWorkerParams, 0, sizeof(WorkerThreadParam) * m_nThreads);
 	// 根据用户设置的线程数量，生成每一个线程连接至服务器，并生成线程发送数据
 	for (int i = 0; i < m_nThreads; i++)
 	{
@@ -108,13 +110,12 @@ bool  CClient::EstablishConnections()
 			return true;
 		}
 		// 向服务器进行连接
-		if (!this->ConnetToServer(&m_pWorkerParams[i].sock,
+		if (!this->ConnetToServer(m_pWorkerParams[i].sock,
 			m_strServerIP, m_nPort))
 		{
 			ShowMessage(_T("连接服务器失败！"));
 			//CleanUp(); //这里清除后，线程还在用，就崩溃了
-			//return false;
-			break;
+			return false;
 		}
 		m_pWorkerParams[i].nThreadNo = i + 1;
 		m_pWorkerParams[i].nSendTimes = m_nTimes;
@@ -130,25 +131,26 @@ bool  CClient::EstablishConnections()
 
 ////////////////////////////////////////////////////////////////////////////////////
 //	向服务器进行Socket连接
-bool CClient::ConnetToServer(SOCKET* pSocket,
-	CString strServer, int nPort)
+bool CClient::ConnetToServer(SOCKET& pSocket, CString strServer, int nPort)
 {
 	struct sockaddr_in ServerAddress;
 	struct hostent* Server;
 	// 生成SOCKET
-	*pSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (INVALID_SOCKET == *pSocket)
+	pSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (INVALID_SOCKET == pSocket)
 	{
 		TRACE("错误：初始化Socket失败，错误信息：%d\n",
 			WSAGetLastError());
+		pSocket = NULL;
 		return false;
 	}
 	// 生成地址信息
 	Server = gethostbyname(strServer.GetString());
 	if (Server == NULL)
 	{
-		closesocket(*pSocket);
 		TRACE("错误：无效的服务器地址.\n");
+		closesocket(pSocket);
+		pSocket = NULL;
 		return false;
 	}
 	ZeroMemory((char*)&ServerAddress, sizeof(ServerAddress));
@@ -157,12 +159,13 @@ bool CClient::ConnetToServer(SOCKET* pSocket,
 		(char*)Server->h_addr, Server->h_length);
 	ServerAddress.sin_port = htons(m_nPort);
 	// 开始连接服务器
-	if (SOCKET_ERROR == connect(*pSocket,
+	if (SOCKET_ERROR == connect(pSocket,
 		reinterpret_cast<const struct sockaddr*>(&ServerAddress),
 		sizeof(ServerAddress)))
 	{
-		closesocket(*pSocket);
 		TRACE("错误：连接至服务器失败！\n");
+		closesocket(pSocket);
+		pSocket = NULL;
 		return false;
 	}
 	return true;
@@ -202,16 +205,37 @@ bool CClient::Start()
 void CClient::Stop()
 {
 	if (m_hShutdownEvent == NULL) return;
-	SetEvent(m_hShutdownEvent);
-	// 等待Connection线程退出
-	WaitForSingleObject(m_hConnectionThread, INFINITE);
+	BOOL bRet = SetEvent(m_hShutdownEvent);
+	//ShowMessage("SetEvent() bRet=%d", bRet);
+	// 等待Connection线程退出 INFINITE，超时1000避免卡死
+	int nRet = WaitForSingleObject(m_hConnectionThread, 1000);
+	//ShowMessage("WaitForSingleObject() nRet=%d", nRet);
 	// 关闭所有的Socket
-	for (int i = 0; i < m_nThreads; i++)
+	if (m_pWorkerParams)
 	{
-		closesocket(m_pWorkerParams[i].sock);
+		for (int i = 0; i < m_nThreads; i++)
+		{
+			if (m_pWorkerParams[i].sock)
+			{
+				int nRet = closesocket(m_pWorkerParams[i].sock);
+				//ShowMessage("closesocket() nRet=%d", nRet);
+
+			}
+		}
+		// 等待所有的工作者线程退出 MAXIMUM_WAIT_OBJECTS
+		/*DWORD nCount = m_nThreads < MAXIMUM_WAIT_OBJECTS ?
+			m_nThreads : MAXIMUM_WAIT_OBJECTS;
+		nRet = WaitForMultipleObjects(nCount,
+			m_phWorkerThreads, TRUE, INFINITE);
+		if (WAIT_FAILED == nRet)
+		{
+			// ERROR_INVALID_HANDLE=6
+			// ERROR_INVALID_PARAMETER=87
+			nRet = GetLastError(); //NO_ERROR
+			ShowMessage("WaitForMultipleObjects() nErr=%d", nRet);
+		}*/ //这种方法有问题！
 	}
-	// 等待所有的工作者线程退出
-	WaitForMultipleObjects(m_nThreads, m_phWorkerThreads, TRUE, INFINITE);
+	//Sleep(1000);
 	// 清空资源
 	CleanUp();
 	TRACE("测试停止.\n");
