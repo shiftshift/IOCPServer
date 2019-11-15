@@ -2,13 +2,13 @@
 #include "MyServer.h"
 
 CMyServer* g_pServer = NULL;
-HANDLE CMyServer::m_hMutexServerMsgs
-= CreateMutexA(NULL, FALSE, "m_hMutexServerMsgs");
+HANDLE CMyServer::m_hMutex = CreateMutexA(NULL, FALSE, "m_hMutex");
+vector<string> CMyServer::m_vtServerMsgs;
 
 LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	// Don't start processing messages until the application has been created.
-	if (g_pServer != 0)
+	if (g_pServer)
 	{
 		return g_pServer->msgProc(msg, wParam, lParam);
 	}
@@ -28,13 +28,16 @@ CMyServer::CMyServer(HINSTANCE hInstance)
 	hLB_Output = NULL;
 	hST_TextServerIP = NULL;
 	hST_TextServerPort = NULL;
-	lpszApplicationName = TEXT("GameServer");
+	lpszAppName = TEXT("GameServer");
 	lpszTitle = TEXT("GameServer Window");
 	hBtnStart = NULL;
 	hBtnStop = NULL;
 	hBtnExit = NULL;
 	//初始化窗口
 	this->InitMainWindow();
+	LPVOID pfn = (LPVOID)AddServerMsgs;
+	m_IOCP.SetAddInfoFunc((fnAddInfo)pfn);
+	g_pServer = this;
 }
 
 CMyServer::~CMyServer()
@@ -59,13 +62,10 @@ void CMyServer::Init()
 			"提示!", MB_OK);
 		PostQuitMessage(0);
 	}
-
 	//初始化窗口子控件
 	this->InitControls(mhMainWnd);
-
 	//设置监听端口
 	this->m_IOCP.SetPort(this->mServerPort);
-
 	//ip地址和监听端口
 	SetWindowTextA(hEB_InputServerIP,
 		m_IOCP.GetLocalIP().c_str());
@@ -82,7 +82,7 @@ void CMyServer::ShutDown()
 
 int CMyServer::Run()
 {
-	MSG  msg;
+	MSG msg;
 	msg.message = WM_NULL;
 	static long last_time = (long)time(0);
 	while (msg.message != WM_QUIT)
@@ -116,7 +116,7 @@ void CMyServer::InitMainWindow()
 	wndclass.hCursor = LoadCursor(NULL, IDC_ARROW);
 	wndclass.hbrBackground = (HBRUSH)(COLOR_WINDOW);
 	wndclass.lpszMenuName = NULL;
-	wndclass.lpszClassName = lpszApplicationName;	// Registered Class Name
+	wndclass.lpszClassName = lpszAppName;	// Registered Class Name
 
 	if (RegisterClassEx(&wndclass) == 0)
 	{
@@ -124,7 +124,7 @@ void CMyServer::InitMainWindow()
 		exit(1);
 	}
 	// Create the window
-	mhMainWnd = CreateWindow(lpszApplicationName,
+	mhMainWnd = CreateWindow(lpszAppName,
 		lpszTitle, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_MINIMIZEBOX,
 		200, 200, 800, 600, NULL, NULL, mhAppInst, NULL);
 	if (!mhMainWnd)
@@ -184,17 +184,17 @@ void CMyServer::InitControls(HWND hWnd)
 }
 
 //添加服务器消息
-void CMyServer::AddServerMsgs(string& msg)
+void CMyServer::AddServerMsgs(const string& msg)
 {
-	WaitForSingleObject(m_hMutexServerMsgs, INFINITE);
+	WaitForSingleObject(m_hMutex, INFINITE);
 	m_vtServerMsgs.push_back(msg);
-	ReleaseMutex(m_hMutexServerMsgs);
+	ReleaseMutex(m_hMutex);
 }
 
 //处理服务器消息
 void CMyServer::SettleServerMsgs()
 {
-	WaitForSingleObject(m_hMutexServerMsgs, INFINITE);
+	WaitForSingleObject(m_hMutex, INFINITE);
 	if (m_vtServerMsgs.size() > 0)
 	{
 		for (DWORD i = 0; i < m_vtServerMsgs.size(); i++)
@@ -207,7 +207,7 @@ void CMyServer::SettleServerMsgs()
 		Sleep(10);
 	}
 	m_vtServerMsgs.clear();
-	ReleaseMutex(m_hMutexServerMsgs);
+	ReleaseMutex(m_hMutex);
 }
 
 void CMyServer::ShowText(string& msg)

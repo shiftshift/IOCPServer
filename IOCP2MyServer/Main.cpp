@@ -1,7 +1,6 @@
 #include <time.h>
 #include "MyServer.h"
 
-extern CMyServer* g_pServer; //引擎对象
 int WINAPI WinMain(HINSTANCE hInstance,
 	HINSTANCE prevInstance, PSTR cmdLine, int showCmd) 
 {
@@ -9,9 +8,8 @@ int WINAPI WinMain(HINSTANCE hInstance,
 	srand((long)time(0));
 	//生成一个引擎实例并执行
 	CMyServer app(hInstance);
-	g_pServer = &app;
-	g_pServer->Init();
-	g_pServer->Run();
-	g_pServer->ShutDown();
+	app.Init();
+	app.Run();
+	app.ShutDown();
 	return 0;
 }

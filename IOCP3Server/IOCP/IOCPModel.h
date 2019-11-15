@@ -130,7 +130,8 @@ protected:
 	void _ShowMessage(const char* szFormat, ...) const;
 
 public:
-	// 设置主界面的指针，用于调用显示信息到界面中
-	void SetMainDlg(CDialog* p) { m_pMain = p; }
-	CDialog* m_pMain; // 主界面的界面指针，用于在主界面中显示消息
+	typedef void (*fnAddInfo)(const string strInfo);
+	void SetAddInfoFunc(fnAddInfo fn) { m_fnAddInfo = fn; }
+protected:
+	fnAddInfo m_fnAddInfo;
 };

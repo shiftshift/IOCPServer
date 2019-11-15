@@ -49,6 +49,7 @@ when the completed I/O operation was started.
 //============================================================
 //				CIocpModel类定义
 //============================================================
+typedef void (*fnAddInfo)(const string& strInfo);
 // 工作者线程的线程参数
 class CIocpModel;
 struct WorkerThreadParam
@@ -128,4 +129,9 @@ protected:
 	static DWORD WINAPI _WorkerThread(LPVOID lpParam);
 	//在主界面中显示信息
 	void _ShowMessage(const char* szFormat, ...) const;
+
+public:
+	void SetAddInfoFunc(fnAddInfo fn) { m_fnAddInfo = fn; }
+protected:
+	fnAddInfo m_fnAddInfo;
 };
