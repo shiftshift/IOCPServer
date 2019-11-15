@@ -2,6 +2,8 @@
 #pragma once
 #include "Client.h"
 
+#define WM_ADD_LIST_ITEM (WM_USER + 100)  
+
 // CMainDlg 对话框
 class CMainDlg : public CDialog
 {
@@ -29,6 +31,8 @@ protected:
 	afx_msg void OnBnClickedCancel();
 	// 对话框销毁
 	afx_msg void OnDestroy();
+	// 列表框内容的刷新（添加列表项）
+	afx_msg LRESULT OnAddListItem(WPARAM wParam, LPARAM lParam);
 	DECLARE_MESSAGE_MAP()
 
 public:
@@ -36,8 +40,8 @@ public:
 	// 为了减少界面代码对效率的影响，此处使用了内联
 	inline void AddInformation(const CString strInfo)
 	{
-		CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
-		pList->InsertItem(0, strInfo);
+		CString* pStr = new CString(strInfo);
+		PostMessage(WM_ADD_LIST_ITEM, 0, (LPARAM)pStr);
 	}
 private:
 	// 初始化界面信息

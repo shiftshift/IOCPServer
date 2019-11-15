@@ -103,7 +103,6 @@ void CMainDlg::OnSysCommand(UINT nID, LPARAM lParam)
 // 如果向对话框添加最小化按钮，则需要下面的代码
 //  来绘制该图标。对于使用文档/视图模型的 MFC 应用程序，
 //  这将由框架自动完成。
-
 void CMainDlg::OnPaint()
 {
 	if (IsIconic())

@@ -55,6 +55,7 @@ BEGIN_MESSAGE_MAP(CMainDlg, CDialog)
 	ON_BN_CLICKED(IDOK, &CMainDlg::OnBnClickedOk)
 	ON_BN_CLICKED(IDC_STOP, &CMainDlg::OnBnClickedStop)
 	ON_BN_CLICKED(IDCANCEL, &CMainDlg::OnBnClickedCancel)
+	ON_MESSAGE(WM_ADD_LIST_ITEM, OnAddListItem)
 	ON_WM_DESTROY()
 END_MESSAGE_MAP()
 
@@ -177,15 +178,15 @@ void CMainDlg::OnBnClickedOk()
 	CString strIP, strMessage;
 	GetDlgItemText(IDC_IPADDRESS_SERVER, strIP);
 	GetDlgItemText(IDC_EDIT_MESSAGE, strMessage);
-	if (strIP == _T("") || strMessage == _T("") 
+	if (strIP == _T("") || strMessage == _T("")
 		|| nPort <= 0 || nThreads <= 0)
 	{
 		AfxMessageBox(_T("请输入合法的参数！"));
 		return;
 	}
-
 	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
 	pList->DeleteAllItems();
+
 	// 给CClient设置参数
 	m_Client.SetIP(strIP);
 	m_Client.SetPort(nPort);
@@ -232,4 +233,13 @@ void CMainDlg::OnDestroy()
 {
 	OnBnClickedCancel();
 	CDialog::OnDestroy();
+}
+
+LRESULT CMainDlg::OnAddListItem(WPARAM wParam, LPARAM lParam)
+{
+	CString* pStr = ((CString*)lParam);
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
+	pList->InsertItem(0, *pStr);
+	delete pStr;
+	return 0;
 }

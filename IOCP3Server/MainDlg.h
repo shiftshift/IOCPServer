@@ -27,10 +27,8 @@ protected:
 	afx_msg void OnBnClickedStop();
 	// "退出"按钮
 	afx_msg void OnBnClickedCancel();
-	///////////////////////////////////////////////////////////////////////
-	//	系统退出的时候，为确保资源释放，停止监听，清空Socket类库
+	// 系统退出的时候，为确保资源释放，停止监听，清空Socket类库
 	afx_msg void OnDestroy();
-	//afx_msg LRESULT OnNewMsg(WPARAM wParam,LPARAM lParam);
 	DECLARE_MESSAGE_MAP()
 
 private:
