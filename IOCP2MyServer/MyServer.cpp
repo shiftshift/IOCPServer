@@ -1,5 +1,7 @@
 #include <time.h>
 #include "MyServer.h"
+#pragma comment(lib,"ws2_32.lib")
+#pragma comment(lib,"User32.lib")
 
 CMyServer* g_pServer = NULL;
 HANDLE CMyServer::m_hMutex = CreateMutexA(NULL, FALSE, "m_hMutex");
