@@ -9,17 +9,17 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="IOCP\IoContext.h">
-      <Filter>IOCP</Filter>
-    </ClInclude>
     <ClInclude Include="IOCP\IocpModel.h">
-      <Filter>IOCP</Filter>
-    </ClInclude>
-    <ClInclude Include="IOCP\SocketContext.h">
       <Filter>IOCP</Filter>
     </ClInclude>
     <ClInclude Include="MyServer.h">
       <Filter>MyServer</Filter>
+    </ClInclude>
+    <ClInclude Include="IOCP\PerSocketContext.h">
+      <Filter>IOCP</Filter>
+    </ClInclude>
+    <ClInclude Include="IOCP\PerIoContext.h">
+      <Filter>IOCP</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

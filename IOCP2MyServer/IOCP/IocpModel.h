@@ -3,10 +3,7 @@
 修改时间：2013年02月28日18:00:00
 **********************************************************/
 #pragma once
-#include "SocketContext.h"
-#include <vector>
-#include <string>
-using namespace std;
+#include "PerSocketContext.h"
 
 #define WORKER_THREADS_PER_PROCESSOR 2 // 每一个处理器上产生多少个线程
 #define MAX_POST_ACCEPT 10 // 同时投递的AcceptEx请求的数量

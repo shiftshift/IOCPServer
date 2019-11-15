@@ -12,13 +12,8 @@ Notes:
 	 所有从客户端发来的数据，都会实时显示到主界面中去。
 ==========================================================================*/
 #pragma once
-#include <MSWSock.h>
-#include <winsock2.h>
-#pragma comment(lib,"ws2_32.lib")
+#include "PerSocketContext.h"
 
-// 缓冲区长度 (1024*8) 之所以为什么设置8K，也是一个江湖上的经验值
-// 如果确实客户端发来的每组数据都比较少，那么就设置得小一些，省内存
-#define MAX_BUFFER_LEN 8192 
 // 默认IP地址
 #define DEFAULT_IP _T("127.0.0.1")
 // 默认端口
@@ -43,132 +38,7 @@ lpOverlapped [out] 对应于IoContext结构，
 如：进行accept操作时，调用AcceptEx函数时传入；
 A pointer to a variable that receives the address of the OVERLAPPED structure
 that was specified when the completed I/O operation was started.
-
 ****************************************************************/
-
-// 在完成端口上投递的I/O操作的类型
-typedef enum _OPERATION_TYPE
-{
-	UNKNOWN, // 用于初始化，无意义
-	ACCEPT, // 标志投递的Accept操作
-	SEND, // 标志投递的是发送操作
-	RECV, // 标志投递的是接收操作
-}OPERATION_TYPE;
-
-//===============================================================================
-//
-//				单IO数据结构体定义(用于每一个重叠操作的参数)
-//
-//===============================================================================
-//每次套接字操作(如：AcceptEx, WSARecv, WSASend等)对应的数据结构：
-//OVERLAPPED结构(标识本次操作)，关联的套接字，缓冲区，操作类型；
-struct IoContext
-{
-	// 每一个重叠网络操作的重叠结构
-	OVERLAPPED m_Overlapped; //(针对每一个Socket的每一个操作，都要有一个) 
-	SOCKET m_sockAccept; // 这个网络操作所使用的Socket
-	WSABUF m_wsaBuf; // WSA类型的缓冲区，用于给重叠操作传参数的
-	char m_szBuffer[MAX_BUFFER_LEN]; // 这个是WSABUF里具体存字符的缓冲区
-	OPERATION_TYPE m_OpType; // 标识网络操作的类型(对应上面的枚举)
-
-	DWORD m_nTotalBytes; //数据总的字节数
-	DWORD m_nSendBytes;	//已经发送的字节数，如未发送数据则设置为0
-
-	//构造函数
-	IoContext()
-	{
-		ZeroMemory(&m_Overlapped, sizeof(m_Overlapped));
-		ZeroMemory(m_szBuffer, MAX_BUFFER_LEN);
-		m_sockAccept = INVALID_SOCKET;
-		m_wsaBuf.buf = m_szBuffer;
-		m_wsaBuf.len = MAX_BUFFER_LEN;
-		m_OpType = UNKNOWN;
-
-		m_nTotalBytes = 0;
-		m_nSendBytes = 0;
-	}
-	//析构函数
-	~IoContext()
-	{
-		if (m_sockAccept != INVALID_SOCKET)
-		{
-			closesocket(m_sockAccept);
-			m_sockAccept = INVALID_SOCKET;
-		}
-	}
-	//重置缓冲区内容
-	void ResetBuffer()
-	{
-		ZeroMemory(m_szBuffer, MAX_BUFFER_LEN);
-		m_wsaBuf.buf = m_szBuffer;
-		m_wsaBuf.len = MAX_BUFFER_LEN;
-	}
-};
-
-//=================================================================================
-//
-//				单句柄数据结构体定义(用于每一个完成端口，也就是每一个Socket的参数)
-//
-//=================================================================================
-//每个SOCKET对应的数据结构(调用GetQueuedCompletionStatus传入)：-
-//SOCKET，该SOCKET对应的客户端地址，作用在该SOCKET操作集合(对应结构IoContext)；
-struct SocketContext
-{
-	SOCKET m_Socket; // 每一个客户端连接的Socket
-	SOCKADDR_IN m_ClientAddr; // 客户端的地址
-	// 客户端网络操作的上下文数据，
-	// 也就是说对于每一个客户端Socket，是可以在上面同时投递多个IO请求的
-	//套接字操作，本例是WSARecv和WSASend共用一个IoContext
-	CArray<IoContext*> m_arrayIoContext;
-
-	//构造函数
-	SocketContext()
-	{
-		m_Socket = INVALID_SOCKET;
-		memset(&m_ClientAddr, 0, sizeof(m_ClientAddr));
-	}
-
-	//析构函数
-	~SocketContext()
-	{
-		if (m_Socket != INVALID_SOCKET)
-		{
-			closesocket(m_Socket);
-			m_Socket = INVALID_SOCKET;
-		}
-		// 释放掉所有的IO上下文数据
-		for (int i = 0; i < m_arrayIoContext.GetCount(); i++)
-		{
-			delete m_arrayIoContext.GetAt(i);
-		}
-		m_arrayIoContext.RemoveAll();
-	}
-
-	//进行套接字操作时，调用此函数返回PER_IO_CONTEX结构
-	IoContext* GetNewIoContext()
-	{
-		IoContext* p = new IoContext;
-		m_arrayIoContext.Add(p);
-		return p;
-	}
-
-	// 从数组中移除一个指定的IoContext
-	void RemoveContext(IoContext* pContext)
-	{
-		ASSERT(pContext != NULL);
-		for (int i = 0; i < m_arrayIoContext.GetCount(); i++)
-		{
-			if (pContext == m_arrayIoContext.GetAt(i))
-			{
-				delete pContext;
-				pContext = NULL;
-				m_arrayIoContext.RemoveAt(i);
-				break;
-			}
-		}
-	}
-};
-
 //============================================================
 //				CIocpModel类定义
 //============================================================

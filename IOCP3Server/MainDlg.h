@@ -1,6 +1,6 @@
 // MainDlg.h : м╥нд╪Ч
 #pragma once
-#include "IOCPModel.h"
+#include "IOCP/IOCPModel.h"
 
 #define WM_ADD_LIST_ITEM (WM_USER + 100)  
 

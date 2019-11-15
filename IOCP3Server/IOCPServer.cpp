@@ -1,4 +1,4 @@
-//IOCPServer.cpp : 定义应用程序的类行为。
+//IOCPServer.cpp : 定义应用程序的类行为
 #include "StdAfx.h"
 #include "IOCPServer.h"
 #include "MainDlg.h"

@@ -2,6 +2,7 @@
 #include <WinSock2.h>
 #include <MSWSock.h>
 #include <vector>
+#include <string>
 using namespace std;
 
 //»º³åÇø³¤¶È (1024*8)

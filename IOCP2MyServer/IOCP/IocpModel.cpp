@@ -524,7 +524,7 @@ namespace MyServer
 	/********************************************************************
 	*函数功能：函数进行客户端接入处理；
 	*参数说明：
-	SocketContext* pSocketContext:	本次accept操作对应的套接字，该套接字所对应的数据结构；
+	PerSocketContext* pSocketContext:	本次accept操作对应的套接字，该套接字所对应的数据结构；
 	IoContext* pIoContext:			本次accept操作对应的数据结构；
 	DWORD		dwIOSize:				本次操作数据实际传输的字节数
 	********************************************************************/
@@ -587,7 +587,7 @@ namespace MyServer
 			ntohs(ClientAddr->sin_port), pIoContext->m_wsaBuf.buf);
 		g_pServer->AddServerMsgs(string(aa));
 
-		//2.为新接入的套接创建SocketContext，并将该套接字绑定到完成端口
+		//2.为新接入的套接创建PerSocketContext，并将该套接字绑定到完成端口
 		SocketContext* pNewSocketContext = new SocketContext;
 		pNewSocketContext->m_Socket = pIoContext->m_sockAccept;
 		memcpy(&(pNewSocketContext->m_ClientAddr), ClientAddr, sizeof(SOCKADDR_IN));
@@ -628,7 +628,7 @@ namespace MyServer
 	**************************************************************/
 	bool CIocpModel::_DoFirstRecvWithoutData(IoContext* pIoContext)
 	{
-		//为新接入的套接字创建SocketContext结构，并绑定到完成端口
+		//为新接入的套接字创建PerSocketContext结构，并绑定到完成端口
 		SocketContext* pNewSocketContext = new SocketContext;
 		SOCKADDR_IN ClientAddr;
 		int Len = sizeof(ClientAddr);
