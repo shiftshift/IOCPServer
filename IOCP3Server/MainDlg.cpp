@@ -53,10 +53,10 @@ BEGIN_MESSAGE_MAP(CMainDlg, CDialog)
 	//}}AFX_MSG_MAP
 	ON_BN_CLICKED(IDOK, &CMainDlg::OnBnClickedOk)
 	ON_BN_CLICKED(IDC_STOP, &CMainDlg::OnBnClickedStop)
-	ON_WM_CLOSE()
-	//ON_MESSAGE(WM_MSG_NEW_MSG,OnNewMsg)
 	ON_BN_CLICKED(IDCANCEL, &CMainDlg::OnBnClickedCancel)
+	ON_MESSAGE(WM_ADD_LIST_ITEM, OnAddListItem)
 	ON_WM_DESTROY()
+	ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
 // CMainDlg 消息处理程序
@@ -202,4 +202,13 @@ void CMainDlg::OnDestroy()
 {
 	OnBnClickedCancel();
 	CDialog::OnDestroy();
+}
+
+LRESULT CMainDlg::OnAddListItem(WPARAM wParam, LPARAM lParam)
+{
+	CString* pStr = ((CString*)lParam);
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
+	pList->InsertItem(0, *pStr);
+	delete pStr;
+	return 0;
 }

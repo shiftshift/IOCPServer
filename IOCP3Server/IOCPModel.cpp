@@ -862,8 +862,8 @@ int CIocpModel::_GetNoOfProcessors()
 void CIocpModel::_ShowMessage(const CString szFormat,...) const
 {
 	// 根据传入的参数格式化字符串
-	CString   strMessage;
-	va_list   arglist;
+	CString strMessage;
+	va_list arglist;
 
 	// 处理变长参数
 	va_start(arglist, szFormat);
@@ -875,7 +875,7 @@ void CIocpModel::_ShowMessage(const CString szFormat,...) const
 	if( m_pMain!=NULL )
 	{
 		pMain->AddInformation(strMessage);
-		TRACE( strMessage+_T("\n") );
+		//TRACE( strMessage+_T("\n") );
 	}	
 }
 

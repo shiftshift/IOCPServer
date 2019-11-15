@@ -288,8 +288,8 @@ CString CClient::GetLocalIP()
 void CClient::ShowMessage(const CString strInfo, ...)
 {
 	// 根据传入的参数格式化字符串
-	CString   strMessage;
-	va_list   arglist;
+	CString strMessage;
+	va_list arglist;
 
 	va_start(arglist, strInfo);
 	strMessage.FormatV(strInfo, arglist);
