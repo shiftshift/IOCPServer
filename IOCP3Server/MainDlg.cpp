@@ -145,7 +145,7 @@ void CMainDlg::Init()
 	}
 
 	// 设置本机IP地址
-	SetDlgItemText(IDC_STATIC_SERVERIP, m_IOCP.GetLocalIP());
+	SetDlgItemText(IDC_STATIC_SERVERIP, m_IOCP.GetLocalIP().c_str());
 	// 设置默认端口
 	SetDlgItemInt(IDC_EDIT_PORT, DEFAULT_PORT);
 	// 初始化列表

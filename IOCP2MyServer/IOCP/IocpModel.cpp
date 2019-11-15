@@ -2,8 +2,6 @@
 #include "..\MyServer.h"
 #pragma comment(lib,"ws2_32.lib")
 
-HANDLE CIocpModel::m_hMutexServerEngine
-= CreateMutexA(NULL, FALSE, "m_hMutexServerEngine");
 CIocpModel::CIocpModel(void) :
 	m_nThreads(0),
 	m_hShutdownEvent(NULL),
@@ -691,15 +689,16 @@ void CIocpModel::_RemoveContext(SocketContext* pSocketContext)
 	EnterCriticalSection(&m_csContextList);
 	vector<SocketContext*>::iterator it;
 	it = m_arrayClientContext.begin();
-	while (it != m_arrayClientContext.end()) {
+	while (it != m_arrayClientContext.end()) 
+	{
 		SocketContext* p_obj = *it;
-		if (pSocketContext == p_obj) {
+		if (pSocketContext == p_obj) 
+		{
 			delete pSocketContext;
-			pSocketContext = NULL;
+			pSocketContext = nullptr;
 			it = m_arrayClientContext.erase(it);
 			break;
 		}
-
 		it++;
 	}
 	LeaveCriticalSection(&m_csContextList);
@@ -710,7 +709,7 @@ void CIocpModel::_RemoveContext(SocketContext* pSocketContext)
 void CIocpModel::_ClearContextList()
 {
 	EnterCriticalSection(&m_csContextList);
-	for (DWORD i = 0; i < m_arrayClientContext.size(); i++)
+	for (size_t i = 0; i < m_arrayClientContext.size(); i++)
 	{
 		delete m_arrayClientContext.at(i);
 	}

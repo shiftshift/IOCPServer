@@ -59,24 +59,16 @@ struct WorkerThreadParam
 
 class CIocpModel
 {
-public:
-	static HANDLE m_hMutexServerEngine;
-
 private:
-	// 用来通知线程系统退出的事件，为了能够更好的退出线程
-	HANDLE m_hShutdownEvent;
+	HANDLE m_hShutdownEvent; // 用来通知线程，为了能够更好的退出
 	HANDLE m_hIOCompletionPort; // 完成端口的句柄
 	HANDLE* m_phWorkerThreads; // 工作者线程的句柄指针
 	int m_nThreads; // 生成的线程数量
 	string m_strIP; // 服务器端的IP地址
 	int m_nPort; // 服务器端的监听端口
-
-	// 用于Worker线程同步的互斥量
-	CRITICAL_SECTION m_csContextList;
-	// 客户端Socket的Context信息        
-	vector<SocketContext*> m_arrayClientContext;
-	// 用于监听的Socket的Context信息
-	SocketContext* m_pListenContext;
+	CRITICAL_SECTION m_csContextList; // 用于Worker线程同步的互斥量
+	vector<SocketContext*> m_arrayClientContext; // 客户端Socket的Context信息 
+	SocketContext* m_pListenContext; // 用于监听的Socket的Context信息
 	// AcceptEx 和 GetAcceptExSockaddrs 的函数指针，用于调用这两个扩展函数
 	LPFN_ACCEPTEX m_lpfnAcceptEx;
 	LPFN_GETACCEPTEXSOCKADDRS m_lpfnGetAcceptExSockAddrs;

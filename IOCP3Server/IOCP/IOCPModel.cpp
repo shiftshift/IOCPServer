@@ -25,9 +25,9 @@ CIocpModel::CIocpModel(void) :
 	m_phWorkerThreads(NULL),
 	m_strIP(DEFAULT_IP),
 	m_nPort(DEFAULT_PORT),
-	m_pMain(NULL),
 	m_lpfnAcceptEx(NULL),
-	m_pListenContext(NULL)
+	m_pListenContext(NULL),
+	m_pMain(NULL)
 {
 }
 
@@ -363,7 +363,7 @@ bool CIocpModel::_InitializeListenSocket()
 	ServerAddress.sin_family = AF_INET;
 	// 这里可以绑定任何可用的IP地址，或者绑定一个指定的IP地址 
 	//ServerAddress.sin_addr.s_addr = htonl(INADDR_ANY); 
-	ServerAddress.sin_addr.s_addr = inet_addr(m_strIP.GetString());
+	ServerAddress.sin_addr.s_addr = inet_addr(m_strIP.c_str());
 	ServerAddress.sin_port = htons(m_nPort);
 
 	// 绑定地址和端口
@@ -700,7 +700,7 @@ bool CIocpModel::_AssociateWithIOCP(SocketContext* pContext)
 void CIocpModel::_AddToContextList(SocketContext* pHandleData)
 {
 	EnterCriticalSection(&m_csContextList);
-	m_arrayClientContext.Add(pHandleData);
+	m_arrayClientContext.push_back(pHandleData);
 	LeaveCriticalSection(&m_csContextList);
 }
 
@@ -709,17 +709,20 @@ void CIocpModel::_AddToContextList(SocketContext* pHandleData)
 void CIocpModel::_RemoveContext(SocketContext* pSocketContext)
 {
 	EnterCriticalSection(&m_csContextList);
-
-	for (int i = 0; i < m_arrayClientContext.GetCount(); i++)
+	vector<SocketContext*>::iterator it;
+	it = m_arrayClientContext.begin();
+	while (it != m_arrayClientContext.end())
 	{
-		if (pSocketContext == m_arrayClientContext.GetAt(i))
+		SocketContext* p_obj = *it;
+		if (pSocketContext == p_obj)
 		{
-			RELEASE_POINTER(pSocketContext);
-			m_arrayClientContext.RemoveAt(i);
+			delete pSocketContext;
+			pSocketContext = nullptr;
+			it = m_arrayClientContext.erase(it);
 			break;
 		}
+		it++;
 	}
-
 	LeaveCriticalSection(&m_csContextList);
 }
 
@@ -728,11 +731,11 @@ void CIocpModel::_RemoveContext(SocketContext* pSocketContext)
 void CIocpModel::_ClearContextList()
 {
 	EnterCriticalSection(&m_csContextList);
-	for (int i = 0; i < m_arrayClientContext.GetCount(); i++)
+	for (size_t i = 0; i < m_arrayClientContext.size(); i++)
 	{
-		delete m_arrayClientContext.GetAt(i);
+		delete m_arrayClientContext.at(i);
 	}
-	m_arrayClientContext.RemoveAll();
+	m_arrayClientContext.clear();
 	LeaveCriticalSection(&m_csContextList);
 }
 
@@ -743,7 +746,7 @@ void CIocpModel::_ClearContextList()
 //====================================================================================
 ////////////////////////////////////////////////////////////////////
 // 获得本机的IP地址
-CString CIocpModel::GetLocalIP()
+string CIocpModel::GetLocalIP()
 {
 	// 获得本机主机名
 	char hostname[MAX_PATH] = { 0 };
@@ -758,7 +761,7 @@ CString CIocpModel::GetLocalIP()
 	// 将IP地址转化成字符串形式
 	struct in_addr inAddr;
 	memmove(&inAddr, lpAddr, 4);
-	m_strIP = CString(inet_ntoa(inAddr));
+	m_strIP = string(inet_ntoa(inAddr));
 	return m_strIP;
 }
 

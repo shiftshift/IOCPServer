@@ -14,30 +14,37 @@ Notes:
 #pragma once
 #include "PerSocketContext.h"
 
-// 默认IP地址
-#define DEFAULT_IP _T("127.0.0.1")
-// 默认端口
-#define DEFAULT_PORT 10240 
+#define WORKER_THREADS_PER_PROCESSOR 2 // 每一个处理器上产生多少个线程
+#define MAX_POST_ACCEPT 10 // 同时投递的AcceptEx请求的数量
+#define EXIT_CODE NULL // 传递给Worker线程的退出信号
+#define RELEASE_POINTER(x) {if(x != NULL ){delete x;x=NULL;}} // 释放指针宏
+#define RELEASE_HANDLE(x) {if(x != NULL && x!=INVALID_HANDLE_VALUE)\
+	{ CloseHandle(x);x = NULL;}} // 释放句柄宏
+#define RELEASE_SOCKET(x) {if(x != NULL && x !=INVALID_SOCKET) \
+	{ closesocket(x);x=INVALID_SOCKET;}} // 释放Socket宏
+#define DEFAULT_IP "127.0.0.1" //默认IP地址
+#define DEFAULT_PORT 10240 //默认端口号
 
 /****************************************************************
 BOOL WINAPI GetQueuedCompletionStatus(
-__in HANDLE CompletionPort,
-__out LPDWORD lpNumberOfBytes,
-__out PULONG_PTR lpCompletionKey,
-__out LPOVERLAPPED *lpOverlapped,
-__in DWORD dwMilliseconds
+__in   HANDLE CompletionPort,
+__out  LPDWORD lpNumberOfBytes,
+__out  PULONG_PTR lpCompletionKey,
+__out  LPOVERLAPPED *lpOverlapped,
+__in   DWORD dwMilliseconds
 );
 lpCompletionKey [out] 对应于SocketContext结构，
 调用CreateIoCompletionPort绑定套接字到完成端口时传入；
 A pointer to a variable that receives the completion key value
 associated with the file handle whose I/O operation has completed.
-A completion key is a per-file key that is specified in a call
-to CreateIoCompletionPort.
+A completion key is a per-file key that is specified
+in a call to CreateIoCompletionPort.
 
 lpOverlapped [out] 对应于IoContext结构，
 如：进行accept操作时，调用AcceptEx函数时传入；
-A pointer to a variable that receives the address of the OVERLAPPED structure
-that was specified when the completed I/O operation was started.
+A pointer to a variable that receives the address of
+the OVERLAPPED structure that was specified
+when the completed I/O operation was started.
 ****************************************************************/
 //============================================================
 //				CIocpModel类定义
@@ -48,15 +55,28 @@ struct WorkerThreadParam
 {
 	CIocpModel* pIocpModel; //类指针，用于调用类中的函数
 	int nThreadNo; //线程编号
-} ;
+};
 
 class CIocpModel
 {
+private:
+	HANDLE m_hShutdownEvent; // 用来通知线程，为了能够更好的退出
+	HANDLE m_hIOCompletionPort; // 完成端口的句柄
+	HANDLE* m_phWorkerThreads; // 工作者线程的句柄指针
+	int m_nThreads; // 生成的线程数量
+	string m_strIP; // 服务器端的IP地址
+	int m_nPort; // 服务器端的监听端口
+	CRITICAL_SECTION m_csContextList; // 用于Worker线程同步的互斥量
+	vector<SocketContext*> m_arrayClientContext; // 客户端Socket的Context信息 
+	SocketContext* m_pListenContext; // 用于监听的Socket的Context信息
+	// AcceptEx 和 GetAcceptExSockaddrs 的函数指针，用于调用这两个扩展函数
+	LPFN_ACCEPTEX m_lpfnAcceptEx;
+	LPFN_GETACCEPTEXSOCKADDRS m_lpfnGetAcceptExSockAddrs;
+
 public:
 	CIocpModel(void);
 	~CIocpModel(void);
 
-public:
 	// 加载Socket库
 	bool LoadSocketLib();
 	// 卸载Socket库，彻底完事
@@ -66,11 +86,9 @@ public:
 	//	停止服务器
 	void Stop();
 	// 获得本机的IP地址
-	CString GetLocalIP();
+	string GetLocalIP();
 	// 设置监听端口
 	void SetPort(const int& nPort) { m_nPort = nPort; }
-	// 设置主界面的指针，用于调用显示信息到界面中
-	void SetMainDlg(CDialog* p) { m_pMain = p; }
 	//投递WSASend，用于发送数据
 	bool PostWrite(IoContext* pAcceptIoContext);
 	//投递WSARecv用于接收数据
@@ -102,27 +120,17 @@ protected:
 	bool _AssociateWithIOCP(SocketContext* pContext);
 	// 处理完成端口上的错误
 	bool HandleError(SocketContext* pContext, const DWORD& dwErr);
-	//线程函数，为IOCP请求服务的工作者线程
-	static DWORD WINAPI _WorkerThread(LPVOID lpParam);
 	//获得本机的处理器数量
 	int _GetNoOfProcessors();
 	//判断客户端Socket是否已经断开
 	bool _IsSocketAlive(SOCKET s);
+	//线程函数，为IOCP请求服务的工作者线程
+	static DWORD WINAPI _WorkerThread(LPVOID lpParam);
+
+public:
 	//在主界面中显示信息
 	void _ShowMessage(const CString szFormat, ...) const;
-
-private:
-	HANDLE m_hShutdownEvent; // 用来通知线程系统退出的事件，为了能够更好的退出线程
-	HANDLE m_hIOCompletionPort; // 完成端口的句柄
-	HANDLE* m_phWorkerThreads; // 工作者线程的句柄指针
-	int m_nThreads; // 生成的线程数量
-	CString m_strIP; // 服务器端的IP地址
-	int m_nPort; // 服务器端的监听端口
+	// 设置主界面的指针，用于调用显示信息到界面中
+	void SetMainDlg(CDialog* p) { m_pMain = p; }
 	CDialog* m_pMain; // 主界面的界面指针，用于在主界面中显示消息
-	CRITICAL_SECTION m_csContextList; // 用于Worker线程同步的互斥量
-	CArray<SocketContext*> m_arrayClientContext; // 客户端Socket的Context信息 
-	SocketContext* m_pListenContext; // 用于监听的Socket的Context信息
-	// AcceptEx 和 GetAcceptExSockaddrs 的函数指针，用于调用这两个扩展函数
-	LPFN_ACCEPTEX m_lpfnAcceptEx; 
-	LPFN_GETACCEPTEXSOCKADDRS m_lpfnGetAcceptExSockAddrs;
 };
