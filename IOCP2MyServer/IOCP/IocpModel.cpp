@@ -1,10 +1,11 @@
 #include "IOCPModel.h"
 #include "..\MyServer.h"
+#pragma comment(lib,"ws2_32.lib")
 
-namespace MyServer 
+namespace MyServer
 {
 	HANDLE CIocpModel::m_hMutexServerEngine
-		= CreateMutex(NULL, FALSE, "m_hMutexServerEngine");
+		= CreateMutexA(NULL, FALSE, "m_hMutexServerEngine");
 	CIocpModel::CIocpModel(void) :
 		m_nThreads(0),
 		m_hShutdownEvent(NULL),
@@ -117,11 +118,11 @@ namespace MyServer
 							//数据未能发送完，继续发送数据
 							pIoContext->m_wsaBuf.buf = pIoContext->m_szBuffer
 								+ pIoContext->m_nSendBytes;
-							pIoContext->m_wsaBuf.len = pIoContext->m_nTotalBytes 
+							pIoContext->m_wsaBuf.len = pIoContext->m_nTotalBytes
 								- pIoContext->m_nSendBytes;
 							pIOCPModel->PostWrite(pIoContext);
 						}
-						else 
+						else
 						{
 							pIOCPModel->PostRecv(pIoContext);
 						}

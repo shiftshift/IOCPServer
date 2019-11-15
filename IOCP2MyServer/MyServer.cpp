@@ -1,9 +1,11 @@
+#include <time.h>
 #include "MyServer.h"
+
 namespace MyServer
 {
 	CMyServer* g_pServer = NULL;
 	HANDLE CMyServer::m_hMutexServerMsgs
-		= CreateMutex(NULL, FALSE, "m_hMutexServerMsgs");
+		= CreateMutexA(NULL, FALSE, "m_hMutexServerMsgs");
 
 	LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
@@ -28,8 +30,8 @@ namespace MyServer
 		hLB_Output = NULL;
 		hST_TextServerIP = NULL;
 		hST_TextServerPort = NULL;
-		lpszApplicationName = "GameServer";
-		lpszTitle = "GameServer Window";
+		lpszApplicationName = TEXT("GameServer");
+		lpszTitle = TEXT("GameServer Window");
 		hBtnStart = NULL;
 		hBtnStop = NULL;
 		hBtnExit = NULL;
@@ -55,7 +57,7 @@ namespace MyServer
 		// 初始化Socket库
 		if (m_IOCP.LoadSocketLib() == false)
 		{
-			MessageBox(NULL, "加载Winsock 2.2失败，服务器端无法运行！",
+			MessageBoxA(NULL, "加载Winsock 2.2失败，服务器端无法运行！",
 				"提示!", MB_OK);
 			PostQuitMessage(0);
 		}
@@ -67,10 +69,11 @@ namespace MyServer
 		this->m_IOCP.SetPort(this->mServerPort);
 
 		//ip地址和监听端口
-		SetWindowText(hEB_InputServerIP, m_IOCP.GetLocalIP().c_str());
+		SetWindowTextA(hEB_InputServerIP,
+			m_IOCP.GetLocalIP().c_str());
 		char port[10] = { 0 };
 		_itoa_s(this->mServerPort, port, 10);
-		SetWindowText(hEB_InputServerPort, port);
+		SetWindowTextA(hEB_InputServerPort, port);
 		EnableWindow(hEB_InputServerIP, false);
 	}
 
@@ -83,7 +86,7 @@ namespace MyServer
 	{
 		MSG  msg;
 		msg.message = WM_NULL;
-		static long last_time = timeGetTime();
+		static long last_time = (long)time(0);
 		while (msg.message != WM_QUIT)
 		{
 			// If there are Window messages then process them.
@@ -119,7 +122,7 @@ namespace MyServer
 
 		if (RegisterClassEx(&wndclass) == 0)
 		{
-			MessageBox(0, "RegisterClass FAILED", 0, 0);
+			MessageBoxA(0, "RegisterClass FAILED", 0, 0);
 			exit(1);
 		}
 		// Create the window
@@ -128,7 +131,7 @@ namespace MyServer
 			200, 200, 800, 600, NULL, NULL, mhAppInst, NULL);
 		if (!mhMainWnd)
 		{
-			MessageBox(0, "CreateWindow FAILED", 0, 0);
+			MessageBoxA(0, "CreateWindow FAILED", 0, 0);
 			PostQuitMessage(0);
 		}
 		ShowWindow(mhMainWnd, SW_SHOW);
@@ -138,46 +141,46 @@ namespace MyServer
 	void CMyServer::InitControls(HWND hWnd)
 	{
 		// hEB_InputServerIP
-		hST_TextServerIP = CreateWindow("static", "Server IP",
+		hST_TextServerIP = CreateWindowA("static", "Server IP",
 			WS_CHILD | SS_CENTER | WS_VISIBLE, 5, 5, 120, 28,
 			hWnd, (HMENU)IDC_hST_TextServerIP, mhAppInst, NULL);
 
 		// hEB_InputServerIP
-		hST_TextServerPort = CreateWindow("static", "Port",
+		hST_TextServerPort = CreateWindowA("static", "Port",
 			WS_CHILD | SS_CENTER | WS_VISIBLE, 125, 5, 50, 28,
 			hWnd, (HMENU)IDC_hST_TextServerPort, mhAppInst, NULL);
 
 		// hEB_InputServerIP
-		hEB_InputServerIP = CreateWindowEx(WS_EX_CLIENTEDGE,
+		hEB_InputServerIP = CreateWindowExA(WS_EX_CLIENTEDGE,
 			"EDIT", "192.168.0.2", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT,
 			5, 20, 120, 28,
 			hWnd, (HMENU)IDC_hEB_InputServerIP, mhAppInst, NULL);
 
 		// hEB_InputServerPort
-		hEB_InputServerPort = CreateWindowEx(WS_EX_CLIENTEDGE,
+		hEB_InputServerPort = CreateWindowExA(WS_EX_CLIENTEDGE,
 			"EDIT", "6000", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT,
 			125, 20, 50, 28,
 			hWnd, (HMENU)IDC_hEB_InputServerPort, mhAppInst, NULL);
 
 		// hLB_Output
-		hLB_Output = CreateWindowEx(WS_EX_CLIENTEDGE,
+		hLB_Output = CreateWindowExA(WS_EX_CLIENTEDGE,
 			"LISTBOX", NULL, WS_CHILD | WS_VISIBLE | LBS_NOTIFY
 			| WS_VSCROLL | WS_HSCROLL | WS_BORDER, 5, 50, 780, 480,
 			hWnd, (HMENU)IDC_hLB_Output, mhAppInst, NULL);
 
 		//开始监听
-		hBtnStart = CreateWindow("BUTTON", "开始监听",
+		hBtnStart = CreateWindowA("BUTTON", "开始监听",
 			WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 5, 530, 100, 28,
 			hWnd, (HMENU)IDC_hBtn_Start, mhAppInst, NULL);
 
 		//停止监听
-		hBtnStop = CreateWindow("BUTTON", "停止监听",
+		hBtnStop = CreateWindowA("BUTTON", "停止监听",
 			WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
 			150, 530, 100, 28,
 			hWnd, (HMENU)IDC_hBtn_Stop, mhAppInst, NULL);
 
 		//退出按钮
-		hBtnExit = CreateWindow("BUTTON", "退出",
+		hBtnExit = CreateWindowA("BUTTON", "退出",
 			WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 530, 100, 28,
 			hWnd, (HMENU)IDC_hBtn_Exit, mhAppInst, NULL);
 	}
@@ -232,9 +235,9 @@ namespace MyServer
 			case IDC_hBtn_Start:
 				//ShowText(string("Connecting to Server"));
 				//设置监听端口
-				char aa[64];
-				GetWindowText(hEB_InputServerPort, aa, 64);
-				this->mServerPort = atoi(aa);
+				char aa[64];// = { 0 };
+				GetWindowTextA(hEB_InputServerPort, aa, 64);
+				this->mServerPort = atoi(aa); //atoi
 				this->m_IOCP.SetPort(this->mServerPort);
 				this->m_IOCP.Start();
 				EnableWindow(hBtnStart, false);
