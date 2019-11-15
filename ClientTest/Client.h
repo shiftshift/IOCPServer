@@ -88,9 +88,11 @@ private:
 	int m_nPort; // 监听端口
 	int m_nTimes; // 并发线程发送次数
 	int m_nThreads; // 并发线程数量
-	HANDLE* m_phWorkerThreads;
+	HANDLE* m_phWorkerThreads; //所有工作线程
+	DWORD* m_pWorkerThreadIds; //所有工作线程的ID
 	HANDLE m_hConnectionThread; // 接受连接的线程句柄
 	HANDLE m_hShutdownEvent; // 通知线程，为了更好的退出线程
+	LONG m_nRunningWorkerThreads; // 正在运行的并发线程数量
 
 	WorkerThreadParam* m_pWorkerParams; // 线程参数
 };

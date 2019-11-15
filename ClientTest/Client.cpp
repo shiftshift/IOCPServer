@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "Client.h"
 #include "MainDlg.h"
-#include <winsock2.h>
+#include <WinSock2.h>
 #pragma comment(lib,"ws2_32.lib")
 
 #define RELEASE_HANDLE(x) {if(x != NULL && x!=INVALID_HANDLE_VALUE)\
@@ -33,7 +33,7 @@ DWORD WINAPI CClient::_ConnectionThread(LPVOID lpParam)
 {
 	ConnectionThreadParam* pParams = (ConnectionThreadParam*)lpParam;
 	CClient* pClient = (CClient*)pParams->pClient;
-	TRACE("_AccpetThread启动，系统监听中...\n");
+	TRACE("_AcceptThread启动，系统监听中...\n");
 	pClient->EstablishConnections();
 	TRACE(_T("_ConnectionThread线程结束.\n"));
 	RELEASE_POINTER(pParams);
@@ -51,8 +51,16 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 	int nBytesSent = 0;
 	int nBytesRecv = 0;
 
+	InterlockedIncrement(&pClient->m_nRunningWorkerThreads);
 	for (int i = 1; i <= pParams->nSendTimes; i++)
 	{
+		// 监听用户的停止事件
+		int nRet = WaitForSingleObject(pClient->m_hShutdownEvent, 0);
+		if (WAIT_OBJECT_0 == nRet)
+		{
+			TRACE(_T("接收到用户停止命令.\n"));
+			break; /// return true;
+		}
 		memset(szRecv, 0, MAX_BUFFER_LEN);
 		memset(szTemp, 0, sizeof(szTemp));
 		// 向服务器发送信息
@@ -62,7 +70,7 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 		if (SOCKET_ERROR == nBytesSent)
 		{
 			TRACE("send ERROR: ErrCode=[%ld]\n", WSAGetLastError());
-			return 1;
+			break; /// return 1;
 		}
 		pClient->ShowMessage("SENT: %s", szTemp);
 		TRACE("SENT: %s\n", szTemp);
@@ -74,7 +82,7 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 		if (SOCKET_ERROR == nBytesRecv)
 		{
 			TRACE("recv ERROR: ErrCode=[%ld]\n", WSAGetLastError());
-			return 1;
+			break; /// return 1;
 		}
 		pParams->szRecvBuffer[nBytesRecv] = 0;
 		sprintf(szTemp, ("RECV: Msg:[%d] Thread[%d], Data[%s]"),
@@ -88,6 +96,16 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 		pClient->ShowMessage(_T("测试并发 %d 个线程完毕."),
 			pClient->m_nThreads);
 	}
+	DWORD dwThreadId = GetCurrentThreadId();
+	for (int i = 0; i < pClient->m_nThreads; i++)
+	{
+		if (dwThreadId == pClient->m_pWorkerThreadIds[i])
+		{
+			pClient->m_pWorkerThreadIds[i] = 0;
+			break;
+		}
+	}
+	InterlockedDecrement(&pClient->m_nRunningWorkerThreads);
 	return 0;
 }
 ///////////////////////////////////////////////////////////////////////////////////
@@ -97,6 +115,7 @@ bool CClient::EstablishConnections()
 	DWORD nThreadID = 0;
 	PCSTR pData = m_strMessage.GetString();
 	m_phWorkerThreads = new HANDLE[m_nThreads];
+	m_pWorkerThreadIds = new DWORD[m_nThreads];
 	m_pWorkerParams = new WorkerThreadParam[m_nThreads];
 	memset(m_phWorkerThreads, 0, sizeof(HANDLE) * m_nThreads);
 	memset(m_pWorkerParams, 0, sizeof(WorkerThreadParam) * m_nThreads);
@@ -125,6 +144,7 @@ bool CClient::EstablishConnections()
 		m_pWorkerParams[i].pClient = this;
 		m_phWorkerThreads[i] = CreateThread(0, 0, _WorkerThread,
 			(void*)(&m_pWorkerParams[i]), 0, &nThreadID);
+		m_pWorkerThreadIds[i] = nThreadID;
 	}
 	return true;
 }
@@ -189,8 +209,9 @@ bool CClient::LoadSocketLib()
 // 开始监听
 bool CClient::Start()
 {
-	// 建立系统退出的事件通知
+	// 建立系统退出的事件通知 bManualReset bInitialState
 	m_hShutdownEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	m_nRunningWorkerThreads = 0;
 	// 启动连接线程
 	DWORD nThreadID = 0;
 	ConnectionThreadParam* pThreadParams = new ConnectionThreadParam;
@@ -211,7 +232,7 @@ void CClient::Stop()
 	int nRet = WaitForSingleObject(m_hConnectionThread, 1000);
 	//ShowMessage("WaitForSingleObject() nRet=%d", nRet);
 	// 关闭所有的Socket
-	if (m_pWorkerParams)
+	if (m_pWorkerParams && m_phWorkerThreads)
 	{
 		for (int i = 0; i < m_nThreads; i++)
 		{
@@ -219,25 +240,14 @@ void CClient::Stop()
 			{
 				int nRet = closesocket(m_pWorkerParams[i].sock);
 				//ShowMessage("closesocket() nRet=%d", nRet);
-
 			}
 		}
-		// 等待所有的工作者线程退出 MAXIMUM_WAIT_OBJECTS
-		/*DWORD nCount = m_nThreads < MAXIMUM_WAIT_OBJECTS ?
-			m_nThreads : MAXIMUM_WAIT_OBJECTS;
-		nRet = WaitForMultipleObjects(nCount,
-			m_phWorkerThreads, TRUE, INFINITE);
-		if (WAIT_FAILED == nRet)
-		{
-			// ERROR_INVALID_HANDLE=6
-			// ERROR_INVALID_PARAMETER=87
-			nRet = GetLastError(); //NO_ERROR
-			ShowMessage("WaitForMultipleObjects() nErr=%d", nRet);
-		}*/ //这种方法有问题！
-	}
-	//Sleep(1000);
-	// 清空资源
-	CleanUp();
+		while (m_nRunningWorkerThreads > 0)
+		{//等待所有工作线程全部退出
+			Sleep(100);
+		}
+	}	
+	CleanUp(); // 清空资源
 	TRACE("测试停止.\n");
 }
 
@@ -247,6 +257,7 @@ void CClient::CleanUp()
 {
 	if (m_hShutdownEvent == NULL) return;
 	RELEASE_ARRAY(m_phWorkerThreads);
+	RELEASE_ARRAY(m_pWorkerThreadIds);
 	RELEASE_HANDLE(m_hConnectionThread);
 	RELEASE_ARRAY(m_pWorkerParams);
 	RELEASE_HANDLE(m_hShutdownEvent);
