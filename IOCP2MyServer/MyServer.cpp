@@ -216,7 +216,7 @@ namespace MyServer
 	{
 		int Line;
 		// add string to the listbox
-		SendMessage(hLB_Output, LB_ADDSTRING, 0, (LPARAM)msg.c_str());
+		SendMessageA(hLB_Output, LB_ADDSTRING, 0, (LPARAM)msg.c_str());
 		// determine number of items in listbox
 		Line = SendMessage(hLB_Output, LB_GETCOUNT, 0, 0);
 		// flag last item as the selected item, to scroll listbox down
