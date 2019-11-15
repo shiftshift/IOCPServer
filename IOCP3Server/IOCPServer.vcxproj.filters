@@ -30,10 +30,10 @@
     <ClInclude Include="stdafx.h">
       <Filter>MyServer</Filter>
     </ClInclude>
-    <ClInclude Include="PerSocketContext.h">
+    <ClInclude Include="IOCP\PerSocketContext.h">
       <Filter>IOCP</Filter>
     </ClInclude>
-    <ClInclude Include="PerIoContext.h">
+    <ClInclude Include="IOCP\PerIoContext.h">
       <Filter>IOCP</Filter>
     </ClInclude>
   </ItemGroup>
