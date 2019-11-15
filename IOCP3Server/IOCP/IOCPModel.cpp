@@ -1,5 +1,3 @@
-#include "../StdAfx.h"
-#include "../MainDlg.h"
 #include "IOCPModel.h"
 
 CIocpModel::CIocpModel(void) :
@@ -10,9 +8,9 @@ CIocpModel::CIocpModel(void) :
 	m_strIP(DEFAULT_IP),
 	m_nPort(DEFAULT_PORT),
 	m_lpfnAcceptEx(NULL),
-	m_pListenContext(NULL),
-	m_pMain(NULL)
+	m_pListenContext(NULL)
 {
+	m_LogFunc = NULL;
 }
 
 CIocpModel::~CIocpModel(void)
@@ -35,17 +33,17 @@ CIocpModel::~CIocpModel(void)
 DWORD WINAPI CIocpModel::_WorkerThread(LPVOID lpParam)
 {
 	WorkerThreadParam* pParam = (WorkerThreadParam*)lpParam;
-	CIocpModel* pIOCPModel = (CIocpModel*)pParam->pIocpModel;
+	CIocpModel* pIocpModel = (CIocpModel*)pParam->pIocpModel;
 	int nThreadNo = (int)pParam->nThreadNo;
-	pIOCPModel->_ShowMessage("工作者线程启动，ID: %d.", nThreadNo);
+	pIocpModel->_ShowMessage("工作者线程启动，ID: %d.", nThreadNo);
 	OVERLAPPED* pOverlapped = NULL;
 	SocketContext* pSocketContext = NULL;
 	DWORD dwBytesTransfered = 0;
 
 	//循环处理请求，直到接收到Shutdown信息为止
-	while (WAIT_OBJECT_0 != WaitForSingleObject(pIOCPModel->m_hShutdownEvent, 0))
+	while (WAIT_OBJECT_0 != WaitForSingleObject(pIocpModel->m_hShutdownEvent, 0))
 	{
-		BOOL bReturn = GetQueuedCompletionStatus(pIOCPModel->m_hIOCompletionPort,
+		BOOL bReturn = GetQueuedCompletionStatus(pIocpModel->m_hIOCompletionPort,
 			&dwBytesTransfered, (PULONG_PTR)&pSocketContext, &pOverlapped, INFINITE);
 		//接收EXIT_CODE退出标志，则直接退出
 		if (EXIT_CODE == (DWORD)pSocketContext)
@@ -57,7 +55,7 @@ DWORD WINAPI CIocpModel::_WorkerThread(LPVOID lpParam)
 		{
 			DWORD dwErr = GetLastError();
 			// 显示一下提示信息
-			if (!pIOCPModel->HandleError(pSocketContext, dwErr))
+			if (!pIocpModel->HandleError(pSocketContext, dwErr))
 			{
 				break;
 			}
@@ -73,11 +71,11 @@ DWORD WINAPI CIocpModel::_WorkerThread(LPVOID lpParam)
 				&& (OPERATION_TYPE::RECV == pIoContext->m_OpType
 					|| OPERATION_TYPE::SEND == pIoContext->m_OpType))
 			{
-				pIOCPModel->_ShowMessage("客户端 %s:%d 断开连接.",
+				pIocpModel->_ShowMessage("客户端 %s:%d 断开连接.",
 					inet_ntoa(pSocketContext->m_ClientAddr.sin_addr),
 					ntohs(pSocketContext->m_ClientAddr.sin_port));
 				// 释放掉对应的资源
-				pIOCPModel->_RemoveContext(pSocketContext);
+				pIocpModel->_RemoveContext(pSocketContext);
 				continue;
 			}
 			else
@@ -88,7 +86,7 @@ DWORD WINAPI CIocpModel::_WorkerThread(LPVOID lpParam)
 				{
 					// 为了增加代码可读性，这里用专门的_DoAccept函数进行处理连入请求
 					pIoContext->m_nTotalBytes = dwBytesTransfered;
-					pIOCPModel->_DoAccpet(pSocketContext, pIoContext);
+					pIocpModel->_DoAccpet(pSocketContext, pIoContext);
 				}
 				break;
 
@@ -96,7 +94,7 @@ DWORD WINAPI CIocpModel::_WorkerThread(LPVOID lpParam)
 				{
 					// 为了增加代码可读性，这里用专门的_DoRecv函数进行处理接收请求
 					pIoContext->m_nTotalBytes = dwBytesTransfered;
-					pIOCPModel->_DoRecv(pSocketContext, pIoContext);
+					pIocpModel->_DoRecv(pSocketContext, pIoContext);
 				}
 				break;
 
@@ -111,31 +109,31 @@ DWORD WINAPI CIocpModel::_WorkerThread(LPVOID lpParam)
 							+ pIoContext->m_nSendBytes;
 						pIoContext->m_wsaBuf.len = pIoContext->m_nTotalBytes
 							- pIoContext->m_nSendBytes;
-						pIOCPModel->PostWrite(pIoContext);
+						pIocpModel->PostWrite(pIoContext);
 					}
 					else
 					{
-						pIOCPModel->PostRecv(pIoContext);
+						pIocpModel->PostRecv(pIoContext);
 					}
 				}
 				break;
 				default:
 					// 不应该执行到这里
-					pIOCPModel->_ShowMessage("_WorkThread中的 pIoContext->m_OpType 参数异常.\n");
+					pIocpModel->_ShowMessage("_WorkThread中的m_OpType 参数异常.\n");
 					break;
 				} //switch
 			}//if
 		}//if
 	}//while
-	pIOCPModel->_ShowMessage("工作者线程 %d 号退出.\n", nThreadNo);
+	pIocpModel->_ShowMessage("工作者线程 %d 号退出.\n", nThreadNo);
 	// 释放线程参数
 	RELEASE_POINTER(lpParam);
 	return 0;
 }
 
-//====================================================================================
+//================================================================================
 //				 系统初始化和终止
-//====================================================================================
+//================================================================================
 ////////////////////////////////////////////////////////////////////
 // 初始化WinSock 2.2
 //函数功能：初始化套接字
@@ -331,7 +329,8 @@ bool CIocpModel::_InitializeListenSocket()
 	if (NULL == CreateIoCompletionPort((HANDLE)m_pListenContext->m_Socket,
 		m_hIOCompletionPort, (DWORD)m_pListenContext, 0))
 	{
-		this->_ShowMessage("绑定 Listen Socket至完成端口失败！错误代码: %d/n", WSAGetLastError());
+		this->_ShowMessage("绑定 Listen Socket至完成端口失败！错误代码: %d/n", 
+			WSAGetLastError());
 		RELEASE_SOCKET(m_pListenContext->m_Socket);
 		return false;
 	}
@@ -379,7 +378,8 @@ bool CIocpModel::_InitializeListenSocket()
 		sizeof(GuidAcceptEx), &m_lpfnAcceptEx,
 		sizeof(m_lpfnAcceptEx), &dwBytes, NULL, NULL))
 	{
-		this->_ShowMessage("WSAIoctl 未能获取AcceptEx函数指针。错误代码: %d\n", WSAGetLastError());
+		this->_ShowMessage("WSAIoctl 未能获取AcceptEx函数指针。错误代码: %d\n",
+			WSAGetLastError());
 		this->_DeInitialize();
 		return false;
 	}
@@ -390,7 +390,8 @@ bool CIocpModel::_InitializeListenSocket()
 		sizeof(GuidGetAcceptExSockAddrs), &m_lpfnGetAcceptExSockAddrs,
 		sizeof(m_lpfnGetAcceptExSockAddrs), &dwBytes, NULL, NULL))
 	{
-		this->_ShowMessage("WSAIoctl 未能获取GuidGetAcceptExSockAddrs函数指针。错误代码: %d\n", WSAGetLastError());
+		this->_ShowMessage("WSAIoctl 未能获取GuidGetAcceptExSockAddrs函数指针。"
+			"错误代码: %d\n", WSAGetLastError());
 		this->_DeInitialize();
 		return false;
 	}
@@ -434,9 +435,9 @@ void CIocpModel::_DeInitialize()
 	this->_ShowMessage("释放资源完毕.\n");
 }
 
-//====================================================================================
+//================================================================================
 //				 投递完成端口请求
-//====================================================================================
+//================================================================================
 //////////////////////////////////////////////////////////////////
 // 投递Accept请求
 bool CIocpModel::_PostAccept(IoContext* pAcceptIoContext)
@@ -530,9 +531,10 @@ bool CIocpModel::_DoFirstRecvWithData(IoContext* pIoContext)
 	this->_ShowMessage("客户额 %s:%d 信息：%s.", inet_ntoa(ClientAddr->sin_addr),
 		ntohs(ClientAddr->sin_port), pIoContext->m_wsaBuf.buf);
 
-	//////////////////////////////////////////////////////////////////////////////////////////////////////
-	// 2. 这里需要注意，这里传入的这个是ListenSocket上的Context，这个Context我们还需要用于监听下一个连接
-	// 所以我还得要将ListenSocket上的Context复制出来一份为新连入的Socket新建一个SocketContext
+	////////////////////////////////////////////////////////////////////////////////
+	// 2. 这里需要注意，这里传入的这个是ListenSocket上的Context，
+	// 这个Context我们还需要用于监听下一个连接，所以我还得要将ListenSocket
+	//	上的Context复制出来一份，为新连入的Socket新建一个SocketContext
 	//2.为新接入的套接创建SocketContext，并将该套接字绑定到完成端口
 	SocketContext* pNewSocketContext = new SocketContext;
 	pNewSocketContext->m_Socket = pIoContext->m_sockAccept;
@@ -566,7 +568,7 @@ bool CIocpModel::_DoFirstRecvWithData(IoContext* pIoContext)
 	//加入到ContextList中去(需要统一管理，方便释放资源)
 	this->_AddToContextList(pNewSocketContext);
 
-	////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////
 	// 5. 使用完毕之后，把Listen Socket的那个IoContext重置，然后准备投递新的AcceptEx
 	//pIoContext->ResetBuffer();
 	//return this->_PostAccept(pIoContext );
@@ -636,7 +638,8 @@ bool CIocpModel::_AssociateWithIOCP(SocketContext* pContext)
 		m_hIOCompletionPort, (DWORD)pContext, 0);
 	if (NULL == hTemp)
 	{
-		this->_ShowMessage("执行CreateIoCompletionPort()出现错误.错误代码：%d", GetLastError());
+		this->_ShowMessage("执行CreateIoCompletionPort()出现错误.错误代码：%d", 
+			GetLastError());
 		return false;
 	}
 	return true;
@@ -689,11 +692,9 @@ void CIocpModel::_ClearContextList()
 	LeaveCriticalSection(&m_csContextList);
 }
 
-//====================================================================================
-//
+//================================================================================
 //				 其他辅助函数定义
-//
-//====================================================================================
+//================================================================================
 ////////////////////////////////////////////////////////////////////
 // 获得本机的IP地址
 string CIocpModel::GetLocalIP()
@@ -780,20 +781,15 @@ bool CIocpModel::HandleError(SocketContext* pContext, const DWORD& dwErr)
 // 在主界面中显示提示信息
 void CIocpModel::_ShowMessage(const char* szFormat, ...) const
 {
-	static char buff[512] = { 0 };
-	// 根据传入的参数格式化字符串
-	string strMessage;
-	va_list arglist;
-
-	// 处理变长参数
-	va_start(arglist, szFormat);
-	snprintf(buff, sizeof(buff), szFormat, arglist);
-	va_end(arglist);
-
-	// 在主界面中显示
-	CMainDlg* pMain = (CMainDlg*)m_pMain;
-	if (m_pMain != NULL)
+	if (m_LogFunc)
 	{
-		pMain->AddInformation(buff);
+		char buff[256] = { 0 };
+		va_list arglist;
+		// 处理变长参数
+		va_start(arglist, szFormat);
+		vsnprintf(buff, sizeof(buff), szFormat, arglist);
+		va_end(arglist);
+
+		m_LogFunc(string(buff));
 	}
 }

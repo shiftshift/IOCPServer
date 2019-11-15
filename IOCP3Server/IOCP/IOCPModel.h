@@ -49,6 +49,7 @@ when the completed I/O operation was started.
 //============================================================
 //				CIocpModel类定义
 //============================================================
+typedef void (*LOG_FUNC)(const string& strInfo);
 // 工作者线程的线程参数
 class CIocpModel;
 struct WorkerThreadParam
@@ -130,8 +131,7 @@ protected:
 	void _ShowMessage(const char* szFormat, ...) const;
 
 public:
-	typedef void (*fnAddInfo)(const string strInfo);
-	void SetAddInfoFunc(fnAddInfo fn) { m_fnAddInfo = fn; }
+	void SetLogFunc(LOG_FUNC fn) { m_LogFunc = fn; }
 protected:
-	fnAddInfo m_fnAddInfo;
+	LOG_FUNC m_LogFunc;
 };

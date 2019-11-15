@@ -5,6 +5,8 @@
 #define new DEBUG_NEW
 #endif
 
+HWND g_hWnd = NULL;
+
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 class CAboutDlg : public CDialog
 {
@@ -138,7 +140,7 @@ HCURSOR CMainDlg::OnQueryDragIcon()
 void CMainDlg::Init()
 {
 	// 初始化Socket库
-	if (false == m_IOCP.LoadSocketLib())
+	if (!m_IOCP.LoadSocketLib())
 	{
 		AfxMessageBox(_T("加载Winsock 2.2失败，服务器端无法运行！"));
 		PostQuitMessage(0);
@@ -150,19 +152,21 @@ void CMainDlg::Init()
 	SetDlgItemInt(IDC_EDIT_PORT, DEFAULT_PORT);
 	// 初始化列表
 	this->InitListCtrl();
-	// 绑定主界面指针(为了方便在界面中显示信息 )
-	m_IOCP.SetMainDlg(this);
+	g_hWnd = this->m_hWnd;
+	LPVOID pfn = (LPVOID)AddInformation;
+	m_IOCP.SetLogFunc((LOG_FUNC)pfn);
 }
 
 ///////////////////////////////////////////////////////////////////////
 //	开始监听
 void CMainDlg::OnBnClickedOk()
 {
-	if (false == m_IOCP.Start())
+	if (!m_IOCP.Start())
 	{
 		AfxMessageBox(_T("服务器启动失败！"));
 		return;
 	}
+
 	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
 	pList->DeleteAllItems();
 	GetDlgItem(IDOK)->EnableWindow(FALSE);
@@ -211,4 +215,14 @@ LRESULT CMainDlg::OnAddListItem(WPARAM wParam, LPARAM lParam)
 	pList->InsertItem(0, (*pStr).c_str());
 	delete pStr;
 	return 0;
+}
+
+void CMainDlg::AddInformation(const string& strInfo)
+{
+	if (g_hWnd)
+	{
+		string* pStr = new string(strInfo);
+		::PostMessage(g_hWnd, WM_ADD_LIST_ITEM, 0,
+			(LPARAM)pStr);
+	}
 }

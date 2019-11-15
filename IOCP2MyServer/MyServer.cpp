@@ -36,7 +36,7 @@ CMyServer::CMyServer(HINSTANCE hInstance)
 	//³õÊ¼»¯´°¿Ú
 	this->InitMainWindow();
 	LPVOID pfn = (LPVOID)AddServerMsgs;
-	m_IOCP.SetAddInfoFunc((fnAddInfo)pfn);
+	m_IOCP.SetLogFunc((LOG_FUNC)pfn);
 	g_pServer = this;
 }
 

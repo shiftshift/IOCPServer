@@ -10,6 +10,7 @@ CIocpModel::CIocpModel(void) :
 	m_lpfnAcceptEx(NULL),
 	m_pListenContext(NULL)
 {
+	m_LogFunc = NULL;
 }
 
 CIocpModel::~CIocpModel(void)
@@ -780,7 +781,7 @@ bool CIocpModel::HandleError(SocketContext* pContext, const DWORD& dwErr)
 // 在主界面中显示提示信息
 void CIocpModel::_ShowMessage(const char* szFormat, ...) const
 {
-	if (m_fnAddInfo)
+	if (m_LogFunc)
 	{
 		char buff[256] = { 0 };
 		va_list arglist;
@@ -789,6 +790,6 @@ void CIocpModel::_ShowMessage(const char* szFormat, ...) const
 		vsnprintf(buff, sizeof(buff), szFormat, arglist);
 		va_end(arglist);
 
-		m_fnAddInfo(string(buff));
+		m_LogFunc(string(buff));
 	}
 }
