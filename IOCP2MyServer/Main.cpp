@@ -1,6 +1,5 @@
 #include <time.h>
 #include "MyServer.h"
-using namespace MyServer;
 
 int WINAPI WinMain(HINSTANCE hInstance,
 	HINSTANCE prevInstance, PSTR cmdLine, int showCmd) 
