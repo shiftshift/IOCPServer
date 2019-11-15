@@ -44,9 +44,9 @@ public:
 	// 当前客户端有新消息到来的时候，在主界面中显示
 	//		新到来的信息(在类CIocpModel中调用)
 	// 为了减少界面代码对效率的影响，此处使用了内联
-	inline void AddInformation(const CString strInfo)
+	inline void AddInformation(const string strInfo)
 	{
-		CString* pStr = new CString(strInfo);
+		string* pStr = new string(strInfo);
 		PostMessage(WM_ADD_LIST_ITEM, 0, (LPARAM)pStr);
 	}
 

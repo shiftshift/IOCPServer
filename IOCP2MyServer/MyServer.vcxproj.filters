@@ -15,10 +15,10 @@
     <ClInclude Include="MyServer.h">
       <Filter>MyServer</Filter>
     </ClInclude>
-    <ClInclude Include="IOCP\PerSocketContext.h">
+    <ClInclude Include="IOCP\PerIoContext.h">
       <Filter>IOCP</Filter>
     </ClInclude>
-    <ClInclude Include="IOCP\PerIoContext.h">
+    <ClInclude Include="IOCP\PerSocketContext.h">
       <Filter>IOCP</Filter>
     </ClInclude>
   </ItemGroup>

@@ -16,8 +16,8 @@ using namespace std;
 class CMyServer
 {
 protected:
-	HINSTANCE mhAppInst;	 //实例
-	HWND mhMainWnd;	 //主窗口句柄
+	HINSTANCE mhAppInst; //实例
+	HWND mhMainWnd; //主窗口句柄
 	LPCTSTR lpszApplicationName; //程序名
 	LPCTSTR lpszTitle; //标题
 	int mServerPort; //服务端口
@@ -59,5 +59,3 @@ public:
 protected:
 	virtual void ShowText(string& msg); //显示消息
 };
-
-extern CMyServer* g_pServer; //引擎对象

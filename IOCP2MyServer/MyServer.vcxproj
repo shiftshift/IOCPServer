@@ -11,9 +11,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="IOCP\IocpModel.h" />
     <ClInclude Include="IOCP\PerIoContext.h" />
     <ClInclude Include="IOCP\PerSocketContext.h" />
-    <ClInclude Include="IOCP\IocpModel.h" />
     <ClInclude Include="MyServer.h" />
   </ItemGroup>
   <ItemGroup>

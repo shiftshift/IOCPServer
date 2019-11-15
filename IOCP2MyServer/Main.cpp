@@ -1,6 +1,7 @@
 #include <time.h>
 #include "MyServer.h"
 
+extern CMyServer* g_pServer; //ÒýÇæ¶ÔÏó
 int WINAPI WinMain(HINSTANCE hInstance,
 	HINSTANCE prevInstance, PSTR cmdLine, int showCmd) 
 {

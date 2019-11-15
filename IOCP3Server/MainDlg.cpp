@@ -206,9 +206,9 @@ void CMainDlg::OnDestroy()
 
 LRESULT CMainDlg::OnAddListItem(WPARAM wParam, LPARAM lParam)
 {
-	CString* pStr = ((CString*)lParam);
+	string* pStr = ((string*)lParam);
 	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
-	pList->InsertItem(0, *pStr);
+	pList->InsertItem(0, (*pStr).c_str());
 	delete pStr;
 	return 0;
 }

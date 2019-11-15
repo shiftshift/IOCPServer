@@ -126,10 +126,10 @@ protected:
 	bool _IsSocketAlive(SOCKET s);
 	//线程函数，为IOCP请求服务的工作者线程
 	static DWORD WINAPI _WorkerThread(LPVOID lpParam);
+	//在主界面中显示信息
+	void _ShowMessage(const char* szFormat, ...) const;
 
 public:
-	//在主界面中显示信息
-	void _ShowMessage(const CString szFormat, ...) const;
 	// 设置主界面的指针，用于调用显示信息到界面中
 	void SetMainDlg(CDialog* p) { m_pMain = p; }
 	CDialog* m_pMain; // 主界面的界面指针，用于在主界面中显示消息

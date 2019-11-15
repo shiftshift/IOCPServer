@@ -126,4 +126,6 @@ protected:
 	bool _IsSocketAlive(SOCKET s);
 	//线程函数，为IOCP请求服务的工作者线程
 	static DWORD WINAPI _WorkerThread(LPVOID lpParam);
+	//在主界面中显示信息
+	void _ShowMessage(const char* szFormat, ...) const;
 };
