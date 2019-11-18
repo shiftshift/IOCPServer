@@ -17,9 +17,10 @@ Notes:
 #define WORKER_THREADS_PER_PROCESSOR 2 // 每一个处理器上产生多少个线程
 #define MAX_POST_ACCEPT 10 // 同时投递的AcceptEx请求的数量
 #define EXIT_CODE NULL // 传递给Worker线程的退出信号
-#define RELEASE_POINTER(x) {if(x != NULL ){delete x;x=NULL;}} // 释放指针宏
-#define RELEASE_HANDLE(x) {if(x != NULL && x!=INVALID_HANDLE_VALUE)\
-	{ CloseHandle(x);x = NULL;}} // 释放句柄宏
+#define RELEASE_ARRAY(x) {if(x != nullptr ){delete[] x;x=nullptr;}} 
+#define RELEASE_POINTER(x) {if(x != nullptr ){delete x;x=nullptr;}} 
+#define RELEASE_HANDLE(x) {if(x != nullptr && x!=INVALID_HANDLE_VALUE)\
+	{ CloseHandle(x);x = nullptr;}} // 释放句柄宏
 #define RELEASE_SOCKET(x) {if(x != NULL && x !=INVALID_SOCKET) \
 	{ closesocket(x);x=INVALID_SOCKET;}} // 释放Socket宏
 #define DEFAULT_IP "127.0.0.1" //默认IP地址
@@ -71,8 +72,8 @@ private:
 	vector<SocketContext*> m_arrayClientContext; // 客户端Socket的Context信息 
 	SocketContext* m_pListenContext; // 用于监听的Socket的Context信息
 	// AcceptEx 和 GetAcceptExSockaddrs 的函数指针，用于调用这两个扩展函数
-	LPFN_ACCEPTEX m_lpfnAcceptEx;
 	LPFN_GETACCEPTEXSOCKADDRS m_lpfnGetAcceptExSockAddrs;
+	LPFN_ACCEPTEX m_lpfnAcceptEx;
 
 public:
 	CIocpModel(void);
@@ -81,7 +82,8 @@ public:
 	// 加载Socket库
 	bool LoadSocketLib();
 	// 卸载Socket库，彻底完事
-	void UnloadSocketLib() { WSACleanup(); }
+	void UnloadSocketLib() noexcept
+		{ WSACleanup(); }
 	// 启动服务器
 	bool Start();
 	//	停止服务器
@@ -89,7 +91,8 @@ public:
 	// 获得本机的IP地址
 	string GetLocalIP();
 	// 设置监听端口
-	void SetPort(const int& nPort) { m_nPort = nPort; }
+	void SetPort(const int& nPort) noexcept
+		{ m_nPort = nPort; }
 	//投递WSASend，用于发送数据
 	bool PostWrite(IoContext* pAcceptIoContext);
 	//投递WSARecv用于接收数据
@@ -122,9 +125,9 @@ protected:
 	// 处理完成端口上的错误
 	bool HandleError(SocketContext* pContext, const DWORD& dwErr);
 	//获得本机的处理器数量
-	int _GetNoOfProcessors();
+	int _GetNoOfProcessors() noexcept;
 	//判断客户端Socket是否已经断开
-	bool _IsSocketAlive(SOCKET s);
+	bool _IsSocketAlive(SOCKET s) noexcept;
 	//线程函数，为IOCP请求服务的工作者线程
 	static DWORD WINAPI _WorkerThread(LPVOID lpParam);
 	//在主界面中显示信息
