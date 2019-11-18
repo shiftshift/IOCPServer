@@ -13,7 +13,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IOCP0Client", "IOCP0CS\clie
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IOCP3Server", "IOCP3Server\IOCPServer.vcxproj", "{E7FB7813-68D6-41D5-8B02-DACF1B8F9510}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IOCP0server", "IOCP0CS\server\server.vcxproj", "{CC801F10-D099-4EA7-92BD-F25F3D27C051}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "IOCP0Server", "IOCP0CS\server\server.vcxproj", "{CC801F10-D099-4EA7-92BD-F25F3D27C051}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

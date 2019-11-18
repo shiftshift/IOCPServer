@@ -25,12 +25,12 @@ enum class OPERATION_TYPE
 // OVERLAPPED结构(标识本次操作)，关联的套接字，缓冲区，操作类型；
 struct IoContext
 {
-	// 每一个重叠网络操作的重叠结构
 	OVERLAPPED m_Overlapped; //(针对每一个Socket的每一个操作，都要有一个) 
+	OPERATION_TYPE m_OpType; // 标识网络操作的类型(对应上面的枚举)
+	// 每一个重叠网络操作的重叠结构
 	SOCKET m_sockAccept; // 这个网络操作所使用的Socket
 	WSABUF m_wsaBuf; // WSA类型的缓冲区，用于给重叠操作传参数的
 	char m_szBuffer[MAX_BUFFER_LEN]; // 这个是WSABUF里具体存字符的缓冲区
-	OPERATION_TYPE m_OpType; // 标识网络操作的类型(对应上面的枚举)
 	DWORD m_nTotalBytes; //数据总的字节数
 	DWORD m_nSendBytes;	//已经发送的字节数，如未发送数据则设置为0
 

@@ -197,6 +197,7 @@ void CMainDlg::OnBnClickedCancel()
 {
 	// Í£Ö¹¼àÌý
 	m_IOCP.Stop();
+	m_IOCP.UnloadSocketLib();
 	CDialog::OnCancel();
 }
 
