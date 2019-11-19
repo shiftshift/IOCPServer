@@ -1,6 +1,7 @@
 #pragma once
 #include <WinSock2.h>
 #include <MSWSock.h>
+#include <WinNt.h>
 #include <vector>
 #include <string>
 using namespace std;
@@ -51,7 +52,7 @@ struct IoContext
 	{
 		if (m_sockAccept != INVALID_SOCKET)
 		{
-			closesocket(m_sockAccept);
+			closesocket(m_sockAccept); //?
 			m_sockAccept = INVALID_SOCKET;
 		}
 	}
