@@ -44,7 +44,7 @@ DWORD WINAPI CIocpModel::_WorkerThread(LPVOID lpParam)
 	const int nThreadNo = pParam->nThreadNo;
 	const int nThreadId = pParam->nThreadId;
 
-	pIocpModel->_ShowMessage("工作者线程，No:%d, ID:%d.", nThreadNo, nThreadId);
+	pIocpModel->_ShowMessage("工作者线程，No:%d, ID:%d", nThreadNo, nThreadId);
 	//循环处理请求，直到接收到Shutdown信息为止
 	while (WAIT_OBJECT_0 != WaitForSingleObject(pIocpModel->m_hShutdownEvent, 0))
 	{
@@ -79,7 +79,7 @@ DWORD WINAPI CIocpModel::_WorkerThread(LPVOID lpParam)
 					|| OPERATION_TYPE::SEND == pIoContext->m_OpType))
 			{
 				pIocpModel->OnConnectionClosed(pSocketContext);
-				pIocpModel->_ShowMessage("客户端 %s:%d 断开连接.",
+				pIocpModel->_ShowMessage("客户端 %s:%d 断开连接",
 					inet_ntoa(pSocketContext->m_ClientAddr.sin_addr),
 					ntohs(pSocketContext->m_ClientAddr.sin_port));
 				// 释放掉对应的资源
@@ -114,13 +114,13 @@ DWORD WINAPI CIocpModel::_WorkerThread(LPVOID lpParam)
 				break;
 				default:
 					// 不应该执行到这里
-					pIocpModel->_ShowMessage("_WorkThread中的m_OpType 参数异常.\n");
+					pIocpModel->_ShowMessage("_WorkThread中的m_OpType 参数异常");
 					break;
 				} //switch
 			}//if
 		}//if
 	}//while
-	pIocpModel->_ShowMessage("工作者线程 %d 号退出.\n", nThreadNo);
+	pIocpModel->_ShowMessage("工作者线程 %d 号退出", nThreadNo);
 	// 释放线程参数
 	RELEASE_POINTER(lpParam);
 	return 0;
@@ -139,7 +139,7 @@ bool CIocpModel::LoadSocketLib()
 	// 错误(一般都不可能出现)
 	if (NO_ERROR != nRet)
 	{
-		this->_ShowMessage("初始化WinSock 2.2失败！\n");
+		this->_ShowMessage("初始化WinSock 2.2失败！");
 		return false;
 	}
 	return true;
@@ -155,25 +155,25 @@ bool CIocpModel::Start()
 	// 初始化IOCP
 	if (!_InitializeIOCP())
 	{
-		this->_ShowMessage("初始化IOCP失败！\n");
+		this->_ShowMessage("初始化IOCP失败！");
 		return false;
 	}
 	else
 	{
-		this->_ShowMessage("\nIOCP初始化完毕\n.");
+		this->_ShowMessage("初始化IOCP完毕！");
 	}
 	// 初始化Socket
 	if (!_InitializeListenSocket())
 	{
-		this->_ShowMessage("Listen Socket初始化失败！\n");
+		this->_ShowMessage("Listen Socket初始化失败！");
 		this->_DeInitialize();
 		return false;
 	}
 	else
 	{
-		this->_ShowMessage("Listen Socket初始化完毕.");
+		this->_ShowMessage("Listen Socket初始化完毕");
 	}
-	this->_ShowMessage("系统准备就绪，等候连接....\n");
+	this->_ShowMessage("系统准备就绪，等候连接...");
 	return true;
 }
 
@@ -199,13 +199,13 @@ void CIocpModel::Stop()
 		this->_ClearContextList();
 		// 释放其他资源
 		this->_DeInitialize();
-		this->_ShowMessage("停止监听\n");
+		this->_ShowMessage("停止监听");
 	}
 }
 
 bool CIocpModel::SendData(SocketContext* pSocketContext, char* data, int size)
 {
-	this->_ShowMessage("SendData(): s=%p d=%p\n", pSocketContext, data);
+	this->_ShowMessage("SendData(): s=%p d=%p", pSocketContext, data);
 	return false;
 }
 
@@ -213,6 +213,7 @@ bool CIocpModel::SendData(SocketContext* pSocketContext, char* data, int size)
 // 初始化完成端口
 bool CIocpModel::_InitializeIOCP()
 {
+	this->_ShowMessage("初始化IOCP-InitializeIOCP()");
 	//If this parameter is zero, the system allows as many 
 	//concurrently running threads as there are processors in the system.
 	//如果此参数为零，则系统允许的并发运行线程数量与系统中的处理器数量相同。
@@ -220,7 +221,7 @@ bool CIocpModel::_InitializeIOCP()
 		nullptr, 0, 0); //NumberOfConcurrentThreads
 	if (nullptr == m_hIOCompletionPort)
 	{
-		this->_ShowMessage("建立完成端口失败！错误代码: %d!\n", WSAGetLastError());
+		this->_ShowMessage("建立完成端口失败！错误代码: %d!", WSAGetLastError());
 		return false;
 	}
 	// 根据本机中的处理器数量，建立对应的线程数
@@ -238,7 +239,7 @@ bool CIocpModel::_InitializeIOCP()
 			(void*)pThreadParams, 0, &nThreadID);
 		pThreadParams->nThreadId = nThreadID;
 	}
-	this->_ShowMessage(" 建立 _WorkerThread %d 个.\n", m_nThreads);
+	this->_ShowMessage("建立WorkerThread %d 个", m_nThreads);
 	return true;
 }
 
@@ -254,27 +255,27 @@ bool CIocpModel::_InitializeListenSocket()
 		IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
 	if (INVALID_SOCKET == m_pListenContext->m_Socket)
 	{
-		this->_ShowMessage("初始化Socket失败，错误代码: %d.\n", WSAGetLastError());
+		this->_ShowMessage("初始化Socket失败，错误代码: %d", WSAGetLastError());
 		this->_DeInitialize();
 		return false;
 	}
 	else
 	{
-		this->_ShowMessage("WSASocket() 完成.\n");
+		this->_ShowMessage("WSASocket() 完成");
 	}
 
 	// 将Listen Socket绑定至完成端口中
 	if (NULL == CreateIoCompletionPort((HANDLE)m_pListenContext->m_Socket,
 		m_hIOCompletionPort, (DWORD)m_pListenContext, 0))
 	{
-		this->_ShowMessage("绑定 Listen Socket至完成端口失败！错误代码: %d/n",
+		this->_ShowMessage("绑定 Listen Socket至完成端口失败！错误代码: %d",
 			WSAGetLastError());
 		this->_DeInitialize();
 		return false;
 	}
 	else
 	{
-		this->_ShowMessage("Listen Socket绑定完成端口 完成.\n");
+		this->_ShowMessage("Listen Socket绑定完成端口 完成");
 	}
 
 	// 填充地址信息
@@ -291,25 +292,25 @@ bool CIocpModel::_InitializeListenSocket()
 	if (SOCKET_ERROR == bind(m_pListenContext->m_Socket,
 		(sockaddr*)&serverAddress, sizeof(serverAddress)))
 	{
-		this->_ShowMessage("bind()函数执行错误.\n");
+		this->_ShowMessage("bind()函数执行错误");
 		this->_DeInitialize();
 		return false;
 	}
 	else
 	{
-		this->_ShowMessage("bind() 完成.\n");
+		this->_ShowMessage("bind() 完成");
 	}
 
 	// 开始进行监听
 	if (SOCKET_ERROR == listen(m_pListenContext->m_Socket, SOMAXCONN))
 	{
-		this->_ShowMessage("Listen()函数执行出现错误.\n");
+		this->_ShowMessage("Listen()函数执行出现错误");
 		this->_DeInitialize();
 		return false;
 	}
 	else
 	{
-		this->_ShowMessage("Listen() 完成.\n");
+		this->_ShowMessage("Listen() 完成");
 	}
 
 	// 使用AcceptEx函数，因为这个是属于WinSock2规范之外的微软另外提供的扩展函数
@@ -322,7 +323,7 @@ bool CIocpModel::_InitializeListenSocket()
 		sizeof(GuidAcceptEx), &m_lpfnAcceptEx,
 		sizeof(m_lpfnAcceptEx), &dwBytes, NULL, NULL))
 	{
-		this->_ShowMessage("WSAIoctl 未能获取AcceptEx函数指针。错误代码: %d\n",
+		this->_ShowMessage("WSAIoctl 未能获取AcceptEx函数指针。错误代码: %d",
 			WSAGetLastError());
 		this->_DeInitialize();
 		return false;
@@ -335,7 +336,7 @@ bool CIocpModel::_InitializeListenSocket()
 		sizeof(m_lpfnGetAcceptExSockAddrs), &dwBytes, NULL, NULL))
 	{
 		this->_ShowMessage("WSAIoctl 未能获取GuidGetAcceptExSockAddrs函数指针。"
-			"错误代码: %d\n", WSAGetLastError());
+			"错误代码: %d", WSAGetLastError());
 		this->_DeInitialize();
 		return false;
 	}
@@ -376,7 +377,7 @@ void CIocpModel::_DeInitialize()
 	RELEASE_HANDLE(m_hIOCompletionPort);
 	// 关闭监听Socket
 	RELEASE_POINTER(m_pListenContext);
-	this->_ShowMessage("释放资源完毕.\n");
+	this->_ShowMessage("释放资源完毕");
 }
 
 //================================================================================
@@ -760,7 +761,7 @@ bool CIocpModel::HandleError(SocketContext* pSocketContext, const DWORD& dwErr)
 		}
 		else
 		{
-			this->_ShowMessage("网络操作超时！重试中...");
+			this->_ShowMessage("网络操作超时！重试中..");
 			return true;
 		}
 	}
