@@ -73,7 +73,7 @@ private:
 	CRITICAL_SECTION m_csContextList; // 用于Worker线程同步的互斥量
 	vector<SocketContext*> m_arrayClientContext; // 客户端Socket的Context信息 
 	SocketContext* m_pListenContext; // 用于监听的Socket的Context信息
-	LONG acceptedCount; // 当前投递的的Accept数量
+	LONG acceptPostCount; // 当前投递的的Accept数量
 	LONG connectCount; // 当前的连接数量
 
 	// AcceptEx 和 GetAcceptExSockaddrs 的函数指针，用于调用这两个扩展函数
@@ -141,8 +141,8 @@ protected:
 	//在有客户端连入的时候，进行处理
 	bool _DoAccept(SocketContext* pSocketContext, IoContext* pIoContext);
 	//连接成功时，根据第一次是否接收到来自客户端的数据进行调用
-	bool _DoFirstRecvWithData(IoContext* pIoContext);
-	bool _DoFirstRecvWithoutData(IoContext* pIoContext);
+	bool _DoFirstRecvWithData(SocketContext* pSocketContext, IoContext* pIoContext);
+	bool _DoFirstRecvWithoutData(SocketContext* pSocketContext, IoContext* pIoContext);
 	//投递WSARecv用于接收数据
 	bool _PostRecv(SocketContext* pSocketContext, IoContext* pIoContext);
 	//数据到达，数组存放在pIoContext参数中

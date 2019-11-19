@@ -12,7 +12,7 @@ CIocpModel::CIocpModel(void) :
 	m_lpfnAcceptEx(nullptr),
 	m_lpfnGetAcceptExSockAddrs(nullptr),
 	m_pListenContext(nullptr),
-	acceptedCount(0),
+	acceptPostCount(0),
 	connectCount(0)
 {
 	m_LogFunc = nullptr;
@@ -247,15 +247,15 @@ bool CIocpModel::_InitializeIOCP()
 // 初始化Socket
 bool CIocpModel::_InitializeListenSocket()
 {
+	this->_ShowMessage("初始化Socket-InitializeListenSocket()");
 	// 生成用于监听的Socket的信息
 	m_pListenContext = new SocketContext;
-
 	// 需要使用重叠IO，必须得使用WSASocket来建立Socket，才可以支持重叠IO操作
 	m_pListenContext->m_Socket = WSASocket(AF_INET, SOCK_STREAM,
 		IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
 	if (INVALID_SOCKET == m_pListenContext->m_Socket)
 	{
-		this->_ShowMessage("初始化Socket失败，错误代码: %d", WSAGetLastError());
+		this->_ShowMessage("WSASocket() 失败，err=%d", WSAGetLastError());
 		this->_DeInitialize();
 		return false;
 	}
@@ -268,14 +268,14 @@ bool CIocpModel::_InitializeListenSocket()
 	if (NULL == CreateIoCompletionPort((HANDLE)m_pListenContext->m_Socket,
 		m_hIOCompletionPort, (DWORD)m_pListenContext, 0))
 	{
-		this->_ShowMessage("绑定 Listen Socket至完成端口失败！错误代码: %d",
+		this->_ShowMessage("绑定失败！错误代码: %d",
 			WSAGetLastError());
 		this->_DeInitialize();
 		return false;
 	}
 	else
 	{
-		this->_ShowMessage("Listen Socket绑定完成端口 完成");
+		this->_ShowMessage("绑定完成端口 完成");
 	}
 
 	// 填充地址信息
@@ -304,13 +304,13 @@ bool CIocpModel::_InitializeListenSocket()
 	// 开始进行监听
 	if (SOCKET_ERROR == listen(m_pListenContext->m_Socket, SOMAXCONN))
 	{
-		this->_ShowMessage("Listen()函数执行出现错误");
+		this->_ShowMessage("listen()出错, err=%d", WSAGetLastError());
 		this->_DeInitialize();
 		return false;
 	}
 	else
 	{
-		this->_ShowMessage("Listen() 完成");
+		this->_ShowMessage("listen() 完成");
 	}
 
 	// 使用AcceptEx函数，因为这个是属于WinSock2规范之外的微软另外提供的扩展函数
@@ -353,7 +353,6 @@ bool CIocpModel::_InitializeListenSocket()
 			return false;
 		}
 	}
-
 	this->_ShowMessage("投递 %d 个AcceptEx请求完毕", MAX_POST_ACCEPT);
 	return true;
 }
@@ -394,31 +393,32 @@ bool CIocpModel::_PostAccept(SocketContext* pSocketContext, IoContext* pIoContex
 	// 准备参数
 	pIoContext->ResetBuffer();
 	pIoContext->m_OpType = OPERATION_TYPE::ACCEPT;
+	// SOCKET hClient = accept(hSocket, NULL, NULL); //传统accept
 	// 为以后新连入的客户端先准备好Socket( 这个是与传统accept最大的区别 ) 
 	pIoContext->m_sockAccept = WSASocket(AF_INET, SOCK_STREAM,
 		IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
 	if (INVALID_SOCKET == pIoContext->m_sockAccept)
-	{
-		_ShowMessage("创建用于Accept的Socket失败！错误代码: %d", WSAGetLastError());
+	{// 投递多少次ACCEPT，就创建多少个socket；
+		_ShowMessage("创建用于Accept的Socket失败！err=%d", WSAGetLastError());
 		return false;
 	}
-	// 将接收缓冲置为0,令AcceptEx直接返回,防止拒绝服务攻击
-	//https://docs.microsoft.com/zh-cn/windows/win32/api/mswsock/nf-mswsock-acceptex
-	// 投递AcceptEx
+	// 投递AcceptEx // 将接收缓冲置为0,令AcceptEx直接返回,防止拒绝服务攻击
+	//https://docs.microsoft.com/zh-cn/windows/win32/api/mswsock/nf-mswsock-acceptex	
 	DWORD dwBytes = 0;
 	WSABUF* pWSAbuf = &pIoContext->m_wsaBuf;
 	if (!m_lpfnAcceptEx(m_pListenContext->m_Socket,
-		pIoContext->m_sockAccept, pWSAbuf->buf,
+		pIoContext->m_sockAccept, pWSAbuf->buf, //0,
 		pWSAbuf->len - ((sizeof(SOCKADDR_IN) + 16) * 2),
 		sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16,
 		&dwBytes, &pIoContext->m_Overlapped))
 	{
 		if (WSA_IO_PENDING != WSAGetLastError())
 		{
-			_ShowMessage("投递 AcceptEx 请求失败，错误代码: %d", WSAGetLastError());
+			_ShowMessage("投递 AcceptEx 失败，err=%d", WSAGetLastError());
 			return false;
 		}
 	}
+	InterlockedIncrement(&acceptPostCount);
 	return true;
 }
 
@@ -437,18 +437,20 @@ IoContext* pIoContext:			本次accept操作对应的数据结构；
 DWORD		dwIOSize:			本次操作数据实际传输的字节数
 ********************************************************************/
 bool CIocpModel::_DoAccept(SocketContext* pSocketContext, IoContext* pIoContext)
-{
-	InterlockedDecrement(&acceptedCount);
+{//这里的pSocketContext是listenSocketContext
+	InterlockedDecrement(&acceptPostCount);
 	InterlockedIncrement(&connectCount);
+	this->_ShowMessage("_DoAccept() acceptedCount=%d, nTotalBytes=%d", 
+		acceptPostCount, pIoContext->m_nTotalBytes);
 	if (pIoContext->m_nTotalBytes > 0)
 	{
 		//客户接入时，第一次接收dwIOSize字节数据
-		_DoFirstRecvWithData(pIoContext);
+		_DoFirstRecvWithData(pSocketContext, pIoContext);
 	}
 	else
 	{
 		//客户端接入时，没有发送数据，则投递WSARecv请求，接收数据
-		_DoFirstRecvWithoutData(pIoContext);
+		_DoFirstRecvWithoutData(pSocketContext, pIoContext);
 	}
 	// 5. 使用完毕之后，把Listen Socket的那个IoContext重置，然后准备投递新的AcceptEx
 	return this->_PostAccept(pSocketContext, pIoContext);
@@ -458,7 +460,8 @@ bool CIocpModel::_DoAccept(SocketContext* pSocketContext, IoContext* pIoContext)
 *函数功能：AcceptEx接收客户连接成功，接收客户第一次发送的数据，故投递WSASend请求
 *函数参数：IoContext* pIoContext:	用于监听套接字上的操作
 **************************************************************/
-bool CIocpModel::_DoFirstRecvWithData(IoContext* pIoContext)
+bool CIocpModel::_DoFirstRecvWithData(SocketContext* pSocketContext, 
+	IoContext* pIoContext)
 {
 	SOCKADDR_IN* clientAddr = NULL, * localAddr = NULL;
 	int remoteLen = sizeof(SOCKADDR_IN), localLen = sizeof(SOCKADDR_IN);
@@ -466,13 +469,13 @@ bool CIocpModel::_DoFirstRecvWithData(IoContext* pIoContext)
 	///////////////////////////////////////////////////////////////////////////
 	// 1. 首先取得连入客户端的地址信息
 	// 这个 m_lpfnGetAcceptExSockAddrs 不得了啊~~~~~~
-	// 不但可以取得客户端和本地端的地址信息，还能顺便取出客户端发来的第一组数据，老强大了...
+	// 不但可以取得客户端和本地端的地址信息，还能顺便取出第一组数据，老强大了...
 	this->m_lpfnGetAcceptExSockAddrs(pIoContext->m_wsaBuf.buf,
 		pIoContext->m_wsaBuf.len - ((sizeof(SOCKADDR_IN) + 16) * 2),
 		sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16,
 		(LPSOCKADDR*)&localAddr, &localLen, (LPSOCKADDR*)&clientAddr, &remoteLen);
 	// 显示客户端信息
-	this->_ShowMessage("客户端 %s:%d 连入", inet_ntoa(clientAddr->sin_addr),
+	this->_ShowMessage("客户端 %s:%d 连好了", inet_ntoa(clientAddr->sin_addr),
 		ntohs(clientAddr->sin_port));
 
 	////////////////////////////////////////////////////////////////////////////////
@@ -485,6 +488,7 @@ bool CIocpModel::_DoFirstRecvWithData(IoContext* pIoContext)
 	this->_AddToContextList(pNewSocketContext);
 	pNewSocketContext->m_Socket = pIoContext->m_sockAccept;
 	memcpy(&(pNewSocketContext->m_ClientAddr), clientAddr, remoteLen);
+	// 3. 将该套接字绑定到完成端口
 	// 参数设置完毕，将这个Socket和完成端口绑定(这也是一个关键步骤)
 	if (!this->_AssociateWithIOCP(pNewSocketContext))
 	{//无需RELEASE_POINTER，失败时，已经release了
@@ -492,23 +496,10 @@ bool CIocpModel::_DoFirstRecvWithData(IoContext* pIoContext)
 		return false;
 	}
 
-	// 3. 继续，建立其下的IoContext，用于在这个Socket上投递第一个Recv数据请求
-	IoContext* pNewIoContext = pNewSocketContext->GetNewIoContext();
-	pNewIoContext->m_OpType = OPERATION_TYPE::SEND;
-	pNewIoContext->m_sockAccept = pNewSocketContext->m_Socket;
-	pNewIoContext->m_nTotalBytes = pIoContext->m_nTotalBytes;
-	pNewIoContext->m_nSendBytes = 0;
-	pNewIoContext->m_wsaBuf.len = pIoContext->m_nTotalBytes;
-	memcpy(pNewIoContext->m_wsaBuf.buf, pIoContext->m_wsaBuf.buf,
-		pIoContext->m_nTotalBytes);	//复制数据到WSASend函数的参数缓冲区
-	//此时是第一次接收数据成功，所以这里投递PostWrite，向客户端发送数据
-	if (!this->_PostSend(pNewSocketContext, pNewIoContext)) //这里不应该直接PostWrite
-	{// 无需RELEASE_POINTER，失败时，已经release了
-		// RELEASE_POINTER(pNewSocketContext);
-		return false;
-	}
 	// 4. 如果投递成功，那么就把这个有效的客户端信息，
 	this->OnConnectionAccepted(pNewSocketContext);
+	this->_DoRecv(pNewSocketContext, pIoContext);
+
 	//////////////////////////////////////////////////////////////////////////////////
 	// 5. 使用完毕之后，把Listen Socket的那个IoContext重置，然后准备投递新的AcceptEx
 	// return this->_PostAccept(pIoContext );
@@ -519,24 +510,29 @@ bool CIocpModel::_DoFirstRecvWithData(IoContext* pIoContext)
 *函数功能：AcceptEx接收客户连接成功，此时并未接收到数据，故投递WSARecv请求
 *函数参数：IoContext* pIoContext:	用于监听套接字上的操作
 **************************************************************/
-bool CIocpModel::_DoFirstRecvWithoutData(IoContext* pIoContext)
+bool CIocpModel::_DoFirstRecvWithoutData(SocketContext* pSocketContext,
+	IoContext* pIoContext)
 {
 	//为新接入的套接字创建SocketContext结构，并绑定到完成端口
-	SOCKADDR ClientAddr = { 0 };
-	int Len = sizeof(ClientAddr);
-	getpeername(pIoContext->m_sockAccept, &ClientAddr, &Len);
+	// 1. 首先取得连入客户端的地址信息
+	SOCKADDR_IN clientAddr = { 0 };
+	int Len = sizeof(clientAddr);
+	getpeername(pIoContext->m_sockAccept, (SOCKADDR*)&clientAddr, &Len);
+	this->_ShowMessage("客户端 %s:%d 连入了", inet_ntoa(clientAddr.sin_addr),
+		ntohs(clientAddr.sin_port));
+	// 2. 这里需要注意，这里传入的这个是ListenSocket上的Context，
 	SocketContext* pNewSocketContext = new SocketContext;
 	//加入到ContextList中去(需要统一管理，方便释放资源)
 	this->_AddToContextList(pNewSocketContext);
 	pNewSocketContext->m_Socket = pIoContext->m_sockAccept;
-	memcpy(&(pNewSocketContext->m_ClientAddr), &ClientAddr, sizeof(SOCKADDR_IN));
-	//将该套接字绑定到完成端口
+	memcpy(&(pNewSocketContext->m_ClientAddr), &clientAddr, sizeof(clientAddr));
+	// 3. 将该套接字绑定到完成端口
 	if (!this->_AssociateWithIOCP(pNewSocketContext))
 	{//无需RELEASE_POINTER，失败时，已经release了
 		//RELEASE_POINTER(pNewSocketContext);
 		return false;
 	}
-	//投递WSARecv请求，接收数据
+	// 4.投递WSARecv请求，接收数据
 	IoContext* pNewIoContext = pNewSocketContext->GetNewIoContext();
 	//此时是AcceptEx未接收到客户端第一次发送的数据，
 	//所以这里调用PostRecv，接收来自客户端的数据
@@ -545,7 +541,8 @@ bool CIocpModel::_DoFirstRecvWithoutData(IoContext* pIoContext)
 		//RELEASE_POINTER(pNewSocketContext);
 		return false;
 	}
-	//如果投递成功，那么就把这个有效的客户端信息，
+	// 5.整个流程就全部成功，继续投递Accept
+	// return this->_PostAccept(pIoContext );
 	this->OnConnectionAccepted(pNewSocketContext);
 	return true;
 }
@@ -570,7 +567,7 @@ bool CIocpModel::_PostRecv(SocketContext* pSocketContext, IoContext* pIoContext)
 	// 如果返回值错误，并且错误的代码并非是Pending的话，那就说明这个重叠请求失败了
 	if ((SOCKET_ERROR == nBytesRecv) && (WSA_IO_PENDING != WSAGetLastError()))
 	{
-		this->_ShowMessage("投递WSARecv失败！err=", WSAGetLastError());
+		this->_ShowMessage("投递WSARecv失败！err=%d", WSAGetLastError());
 		this->_DoClose(pSocketContext);
 		return false;
 	}
@@ -748,7 +745,7 @@ bool CIocpModel::_IsSocketAlive(SOCKET s) noexcept
 //函数功能：显示并处理完成端口上的错误
 bool CIocpModel::HandleError(SocketContext* pSocketContext, const DWORD& dwErr)
 {
-	// 如果是超时了，就再继续等吧 
+	// 如果是超时了，就再继续等吧 0x102=258L
 	if (WAIT_TIMEOUT == dwErr)
 	{
 		// 确认客户端是否还活着...
@@ -765,7 +762,7 @@ bool CIocpModel::HandleError(SocketContext* pSocketContext, const DWORD& dwErr)
 			return true;
 		}
 	}
-	// 可能是客户端异常退出了
+	// 可能是客户端异常退出了; 0x40=64L
 	else if (ERROR_NETNAME_DELETED == dwErr)
 	{
 		this->_ShowMessage("检测到客户端异常退出！");
