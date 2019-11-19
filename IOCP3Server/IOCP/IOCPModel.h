@@ -125,7 +125,7 @@ protected:
 	// 处理完成端口上的错误
 	bool HandleError(SocketContext* pContext, const DWORD& dwErr);
 	//获得本机的处理器数量
-	int _GetNoOfProcessors() noexcept;
+	int _GetNumOfProcessors() noexcept;
 	//判断客户端Socket是否已经断开
 	bool _IsSocketAlive(SOCKET s) noexcept;
 	//线程函数，为IOCP请求服务的工作者线程

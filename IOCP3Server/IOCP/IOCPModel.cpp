@@ -273,7 +273,7 @@ bool CIocpModel::_InitializeIOCP()
 		return false;
 	}
 	// 根据本机中的处理器数量，建立对应的线程数
-	m_nThreads = WORKER_THREADS_PER_PROCESSOR * _GetNoOfProcessors();
+	m_nThreads = WORKER_THREADS_PER_PROCESSOR * _GetNumOfProcessors();
 	// 为工作者线程初始化句柄
 	m_phWorkerThreads = new HANDLE[m_nThreads];
 	// 根据计算出来的数量建立工作者线程
@@ -706,7 +706,7 @@ string CIocpModel::GetLocalIP()
 
 ///////////////////////////////////////////////////////////////////
 // 获得本机中处理器的数量
-int CIocpModel::_GetNoOfProcessors() noexcept
+int CIocpModel::_GetNumOfProcessors() noexcept
 {
 	SYSTEM_INFO si;
 	GetSystemInfo(&si);
