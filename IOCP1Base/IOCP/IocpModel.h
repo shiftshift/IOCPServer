@@ -94,40 +94,35 @@ public:
 		WSACleanup();
 	}
 	// 启动服务器
-	bool Start();
+	bool Start(int port = DEFAULT_PORT);
 	//	停止服务器
 	void Stop();
 	// 获得本机的IP地址
 	string GetLocalIP();
 
 	// 向指定客户端发送数据
-	bool SendData(SocketContext* pSocketContext, char* data, int size);
+	bool SendData(SocketContext* pSoContext, char* data, int size);
+	bool SendData(SocketContext* pSoContext, IoContext* pIoContext);
+	// 继续接收指定客户端的数据
+	bool RecvData(SocketContext* pSoContext, IoContext* pIoContext);
 
 	// 获取当前连接数
 	int GetConnectCount() { return connectCount; }
-	// 设置监听端口
-	void SetPort(const int& nPort) noexcept
-	{
-		m_nPort = nPort;
-	}
-
 	// 获取当前连接数
 	unsigned int GetPort() { return m_nPort; }
 
 	// 事件通知函数(派生类重载此族函数)
-	// 新连接
-	virtual void OnConnectionAccepted(SocketContext* pSocketContext) = 0;// {};
-	// 连接关闭
-	virtual void OnConnectionClosed(SocketContext* pSocketContext) = 0;// {};
-	// 连接上发生错误
-	virtual void OnConnectionError(SocketContext* pSocketContext,
-		int error) = 0;// {};
-	// 读操作完成
-	virtual void OnRecvCompleted(SocketContext* pSocketContext, 
-		IoContext* pIoContext) = 0;// {};
-	// 写操作完成
-	virtual void OnSendCompleted(SocketContext* pSocketContext,
-		IoContext* pIoContext) = 0;// {};
+	virtual void OnConnectionAccepted(SocketContext* pSoContext){};
+	virtual void OnConnectionClosed(SocketContext* pSoContext) {};
+	virtual void OnConnectionError(SocketContext* pSoContext, int error) {};
+	virtual void OnRecvCompleted(SocketContext* pSoContext, IoContext* pIoContext) 
+	{
+		SendData(pSoContext, pIoContext); // 接收数据完成，原封不动发回去
+	};
+	virtual void OnSendCompleted(SocketContext* pSoContext, IoContext* pIoContext) 
+	{
+		RecvData(pSoContext, pIoContext); // 发送数据完成，开始接收数据
+	};
 
 protected:
 	// 初始化IOCP
@@ -137,30 +132,30 @@ protected:
 	// 最后释放资源
 	void _DeInitialize();
 	//投递AcceptEx请求
-	bool _PostAccept(SocketContext* pSocketContext, IoContext* pIoContext);
+	bool _PostAccept(IoContext* pIoContext);
 	//在有客户端连入的时候，进行处理
-	bool _DoAccept(SocketContext* pSocketContext, IoContext* pIoContext);
+	bool _DoAccept(SocketContext* pSoContext, IoContext* pIoContext);
 	//连接成功时，根据第一次是否接收到来自客户端的数据进行调用
-	bool _DoFirstRecvWithData(SocketContext* pSocketContext, IoContext* pIoContext);
-	bool _DoFirstRecvWithoutData(SocketContext* pSocketContext, IoContext* pIoContext);
+	bool _DoFirstRecvWithData(IoContext* pIoContext);
+	bool _DoFirstRecvWithoutData(IoContext* pIoContext);
 	//投递WSARecv用于接收数据
-	bool _PostRecv(SocketContext* pSocketContext, IoContext* pIoContext);
+	bool _PostRecv(SocketContext* pSoContext, IoContext* pIoContext);
 	//数据到达，数组存放在pIoContext参数中
-	bool _DoRecv(SocketContext* pSocketContext, IoContext* pIoContext);
+	bool _DoRecv(SocketContext* pSoContext, IoContext* pIoContext);
 	//投递WSASend，用于发送数据
-	bool _PostSend(SocketContext* pSocketContext, IoContext* pIoContext);
-	bool _DoSend(SocketContext* pSocketContext, IoContext* pIoContext);
-	bool _DoClose(SocketContext* pSocketContext);
+	bool _PostSend(SocketContext* pSoContext, IoContext* pIoContext);
+	bool _DoSend(SocketContext* pSoContext, IoContext* pIoContext);
+	bool _DoClose(SocketContext* pSoContext);
 	//将客户端socket的相关信息存储到数组中
-	void _AddToContextList(SocketContext* pSocketContext);
+	void _AddToContextList(SocketContext* pSoContext);
 	//将客户端socket的信息从数组中移除
-	void _RemoveContext(SocketContext* pSocketContext);
+	void _RemoveContext(SocketContext* pSoContext);
 	// 清空客户端socket信息
 	void _ClearContextList();
 	// 将句柄绑定到完成端口中
-	bool _AssociateWithIOCP(SocketContext* pSocketContext);
+	bool _AssociateWithIOCP(SocketContext* pSoContext);
 	// 处理完成端口上的错误
-	bool HandleError(SocketContext* pSocketContext, const DWORD& dwErr);
+	bool HandleError(SocketContext* pSoContext, const DWORD& dwErr);
 	//获得本机的处理器数量
 	int _GetNumOfProcessors() noexcept;
 	//判断客户端Socket是否已经断开
