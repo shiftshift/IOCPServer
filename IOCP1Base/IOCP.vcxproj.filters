@@ -17,7 +17,13 @@
     <ClInclude Include="targetver.h">
       <Filter>MyServer</Filter>
     </ClInclude>
-    <ClInclude Include="IOCP\IocpBase.h">
+    <ClInclude Include="IOCP\PerIoContext.h">
+      <Filter>IOCP</Filter>
+    </ClInclude>
+    <ClInclude Include="IOCP\PerSocketContext.h">
+      <Filter>IOCP</Filter>
+    </ClInclude>
+    <ClInclude Include="IOCP\IocpModel.h">
       <Filter>IOCP</Filter>
     </ClInclude>
   </ItemGroup>
@@ -28,7 +34,7 @@
     <ClCompile Include="Main.cpp">
       <Filter>MyServer</Filter>
     </ClCompile>
-    <ClCompile Include="IOCP\IocpBase.cpp">
+    <ClCompile Include="IOCP\IocpModel.cpp">
       <Filter>IOCP</Filter>
     </ClCompile>
   </ItemGroup>
