@@ -666,18 +666,22 @@ bool CIocpModel::_DoSend(SocketContext* pSoContext, IoContext* pIoContext)
 		return this->_PostSend(pSoContext, pIoContext);
 	}
 	else
-	{	
+	{
 		this->OnSendCompleted(pSoContext, pIoContext);
 		//return this->_PostRecv(pSoContext, pIoContext);
 		return true; //通知应用层，发送完毕，不主动接收
-	}	
+	}
 }
 
 bool CIocpModel::_DoClose(SocketContext* pSoContext)
 {
 	//this->_ShowMessage("_DoClose() pSoContext=%p", pSoContext);
-	this->_RemoveContext(pSoContext);
-	return true;
+	if (pSoContext != m_pListenContext)
+	{// m_pListenContext不在vector中，找不到
+		this->_RemoveContext(pSoContext);
+		return true;
+	}
+	return false;
 }
 
 /////////////////////////////////////////////////////
@@ -819,7 +823,7 @@ bool CIocpModel::HandleError(SocketContext* pSoContext, const DWORD& dwErr)
 	}
 	// 可能是客户端异常退出了; 0x40=64L
 	else if (ERROR_NETNAME_DELETED == dwErr)
-	{
+	{// 出这个错，可能是监听SOCKET挂掉了
 		this->_ShowMessage("检测到客户端异常退出！");
 		this->OnConnectionError(pSoContext, dwErr);
 		this->_DoClose(pSoContext);
