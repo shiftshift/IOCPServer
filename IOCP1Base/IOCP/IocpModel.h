@@ -122,7 +122,7 @@ public:
 	};
 	virtual void OnSendCompleted(SocketContext* pSoContext, IoContext* pIoContext) 
 	{
-		RecvData(pSoContext, pIoContext); // 发送数据完成，开始接收数据
+		RecvData(pSoContext, pIoContext); // 发送数据完成，继续接收数据
 	};
 
 protected:

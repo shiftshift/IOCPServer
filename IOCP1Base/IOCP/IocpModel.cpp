@@ -441,8 +441,8 @@ bool CIocpModel::_PostAccept(IoContext* pIoContext)
 	DWORD dwBytes = 0;
 	WSABUF* pWSAbuf = &pIoContext->m_wsaBuf;
 	if (!m_lpfnAcceptEx(m_pListenContext->m_Socket,
-		pIoContext->m_sockAccept, pWSAbuf->buf, 0,
-		//pWSAbuf->len - ((sizeof(SOCKADDR_IN) + 16) * 2),
+		pIoContext->m_sockAccept, pWSAbuf->buf, //0,
+		pWSAbuf->len - ((sizeof(SOCKADDR_IN) + 16) * 2),
 		sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16,
 		&dwBytes, &pIoContext->m_Overlapped))
 	{
@@ -476,12 +476,19 @@ bool CIocpModel::_DoAccept(SocketContext* pSoContext, IoContext* pIoContext)
 {//这里的pSoContext是listenSocketContext
 	InterlockedIncrement(&connectCount);
 	InterlockedDecrement(&acceptPostCount);
+#if 0 //无法得到对方的IP地址呢！
 	SOCKADDR_IN* clientAddr = NULL, * localAddr = NULL;
-	int clientAddrLen = sizeof(SOCKADDR_IN), localAddrLen = sizeof(SOCKADDR_IN);
-	// 1. 获取地址信息 （GetAcceptExSockAddrs不仅可以获取地址，还可以顺便取数据）
-	this->m_lpfnGetAcceptExSockAddrs(pIoContext->m_wsaBuf.buf, 0,
-		localAddrLen, clientAddrLen, (LPSOCKADDR*)&localAddr,
-		&localAddrLen, (LPSOCKADDR*)&clientAddr, &clientAddrLen);
+	int remoteLen, localLen, addrLen = sizeof(SOCKADDR_IN);
+	this->m_lpfnGetAcceptExSockAddrs(pIoContext->m_wsaBuf.buf,
+		pIoContext->m_wsaBuf.len - ((addrLen + 16) * 2),
+		addrLen + 16, addrLen + 16, (LPSOCKADDR*)&localAddr,
+		&localLen, (LPSOCKADDR*)&clientAddr, &remoteLen);
+	if (remoteLen < addrLen)
+	{
+		remoteLen = addrLen; //_Inout_
+		addrLen = getpeername(pIoContext->m_sockAccept,
+			(SOCKADDR*)&clientAddr, &remoteLen);
+	}
 
 	// 2. 为新连接建立一个SocketContext 
 	SocketContext* pNewSocketContext = new SocketContext;
@@ -534,8 +541,7 @@ bool CIocpModel::_DoAccept(SocketContext* pSoContext, IoContext* pIoContext)
 		_DoClose(pNewSocketContext);
 		return false;
 	}
-#if 0 //貌似无需区分 是否WithData
-	InterlockedDecrement(&acceptPostCount);
+#else //貌似无需区分 是否WithData
 	if (pIoContext->m_nTotalBytes > 0)
 	{
 		//客户接入时，第一次接收dwIOSize字节数据
@@ -558,16 +564,15 @@ bool CIocpModel::_DoAccept(SocketContext* pSoContext, IoContext* pIoContext)
 bool CIocpModel::_DoFirstRecvWithData(IoContext* pIoContext)
 {
 	SOCKADDR_IN* clientAddr = NULL, * localAddr = NULL;
-	int remoteLen = sizeof(SOCKADDR_IN), localLen = sizeof(SOCKADDR_IN);
-
+	int remoteLen, localLen, addrLen = sizeof(SOCKADDR_IN);
 	///////////////////////////////////////////////////////////////////////////
 	// 1. 首先取得连入客户端的地址信息
 	// 这个 m_lpfnGetAcceptExSockAddrs 不得了啊~~~~~~
 	// 不但可以取得客户端和本地端的地址信息，还能顺便取出第一组数据，老强大了...
 	this->m_lpfnGetAcceptExSockAddrs(pIoContext->m_wsaBuf.buf,
-		pIoContext->m_wsaBuf.len - ((sizeof(SOCKADDR_IN) + 16) * 2),
-		sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16,
-		(LPSOCKADDR*)&localAddr, &localLen, (LPSOCKADDR*)&clientAddr, &remoteLen);
+		pIoContext->m_wsaBuf.len - ((addrLen + 16) * 2),
+		addrLen + 16, addrLen + 16, (LPSOCKADDR*)&localAddr,
+		&localLen, (LPSOCKADDR*)&clientAddr, &remoteLen);
 	// 显示客户端信息
 	this->_ShowMessage("客户端 %s:%d 连入了!", inet_ntoa(clientAddr->sin_addr),
 		ntohs(clientAddr->sin_port));
@@ -620,8 +625,8 @@ bool CIocpModel::_DoFirstRecvWithoutData(IoContext* pIoContext)
 	//为新接入的套接字创建SocketContext结构，并绑定到完成端口
 	// 1. 首先取得连入客户端的地址信息
 	SOCKADDR_IN clientAddr = { 0 };
-	int Len = sizeof(clientAddr);
-	getpeername(pIoContext->m_sockAccept, (SOCKADDR*)&clientAddr, &Len);
+	int addrLen = sizeof(clientAddr);
+	getpeername(pIoContext->m_sockAccept, (SOCKADDR*)&clientAddr, &addrLen);
 	this->_ShowMessage("客户端 %s:%d 连入了", inet_ntoa(clientAddr.sin_addr),
 		ntohs(clientAddr.sin_port));
 	// 2. 这里需要注意，这里传入的这个是ListenSocket上的Context，
@@ -630,7 +635,8 @@ bool CIocpModel::_DoFirstRecvWithoutData(IoContext* pIoContext)
 	//加入到ContextList中去(需要统一管理，方便释放资源)
 	this->_AddToContextList(pNewSocketContext);
 	pNewSocketContext->m_Socket = pIoContext->m_sockAccept;
-	memcpy(&(pNewSocketContext->m_ClientAddr), &clientAddr, sizeof(clientAddr));
+	memcpy(&(pNewSocketContext->m_ClientAddr),
+		&clientAddr, sizeof(clientAddr));
 	// 3. 将该套接字绑定到完成端口
 	if (!this->_AssociateWithIOCP(pNewSocketContext))
 	{//无需RELEASE_POINTER，失败时，已经release了
