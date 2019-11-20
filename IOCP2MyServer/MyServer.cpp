@@ -66,8 +66,6 @@ void CMyServer::Init()
 	}
 	//初始化窗口子控件
 	this->InitControls(mhMainWnd);
-	//设置监听端口
-	this->m_IOCP.SetPort(this->mServerPort);
 	//ip地址和监听端口
 	SetWindowTextA(hEB_InputServerIP,
 		m_IOCP.GetLocalIP().c_str());
@@ -238,8 +236,7 @@ LRESULT CMyServer::msgProc(UINT msg, WPARAM wParam, LPARAM lParam)
 			char aa[64];// = { 0 };
 			GetWindowTextA(hEB_InputServerPort, aa, 64);
 			this->mServerPort = atoi(aa); //atoi
-			this->m_IOCP.SetPort(this->mServerPort);
-			this->m_IOCP.Start();
+			this->m_IOCP.Start(this->mServerPort);
 			EnableWindow(hBtnStart, false);
 			break;
 

@@ -27,7 +27,7 @@ struct SocketContext
 	{
 		if (m_Socket != INVALID_SOCKET)
 		{
-			closesocket(m_Socket);
+			closesocket(m_Socket); //!
 			m_Socket = INVALID_SOCKET;
 		}
 		// 释放掉所有的IO上下文数据

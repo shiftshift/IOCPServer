@@ -33,7 +33,7 @@ struct IoContext
 	WSABUF m_wsaBuf; // WSA类型的缓冲区，用于给重叠操作传参数的
 	char m_szBuffer[MAX_BUFFER_LEN]; // 这个是WSABUF里具体存字符的缓冲区
 	DWORD m_nTotalBytes; //数据总的字节数
-	DWORD m_nSendBytes;	//已经发送的字节数，如未发送数据则设置为0
+	DWORD m_nSentBytes;	//已经发送的字节数，如未发送数据则设置为0
 
 	//构造函数
 	IoContext()
@@ -45,14 +45,15 @@ struct IoContext
 		m_wsaBuf.len = MAX_BUFFER_LEN;
 		m_wsaBuf.buf = m_szBuffer;
 		m_nTotalBytes = 0;
-		m_nSendBytes = 0;
+		m_nSentBytes = 0;
 	}
 	//析构函数
 	~IoContext()
 	{
 		if (m_sockAccept != INVALID_SOCKET)
 		{
-			closesocket(m_sockAccept); //?
+			//SocketContext已经关闭过了
+			//closesocket(m_sockAccept); //!
 			m_sockAccept = INVALID_SOCKET;
 		}
 	}
