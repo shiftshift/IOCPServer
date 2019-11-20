@@ -611,10 +611,10 @@ bool CIocpModel::_DoRecv(SocketContext* pSocketContext, IoContext* pIoContext)
 
 	// 然后开始投递下一个WSARecv请求 //发送数据
 	//这里不应该直接PostWrite，发什么应该由应用决定
-	pIoContext->m_nSendBytes = 0;
+	/*pIoContext->m_nSendBytes = 0;
 	pIoContext->m_nTotalBytes = pIoContext->m_nTotalBytes;
 	pIoContext->m_wsaBuf.len = pIoContext->m_nTotalBytes;
-	pIoContext->m_wsaBuf.buf = pIoContext->m_szBuffer;
+	pIoContext->m_wsaBuf.buf = pIoContext->m_szBuffer;*/
 	return PostWrite(pIoContext);  
 }
 
