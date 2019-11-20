@@ -37,7 +37,8 @@ DWORD WINAPI CIocpModel::_WorkerThread(LPVOID lpParam)
 	CIocpModel* pIocpModel = (CIocpModel*)pParam->pIocpModel;
 	const int nThreadNo = pParam->nThreadNo;
 
-	pIocpModel->_ShowMessage("工作者线程启动，ID: %d.", nThreadNo);
+	pIocpModel->_ShowMessage("工作者线程启动，ID: %d. nThreadId=%d", 
+		nThreadNo, GetCurrentThreadId());
 	//循环处理请求，直到接收到Shutdown信息为止
 	while (WAIT_OBJECT_0 != WaitForSingleObject(pIocpModel->m_hShutdownEvent, 0))
 	{
@@ -209,58 +210,6 @@ void CIocpModel::Stop()
 	}
 }
 
-/*************************************************************
-*函数功能：投递WSARecv请求；
-*函数参数：
-IoContext* pIoContext:	用于进行IO的套接字上的结构，主要为WSARecv参数和WSASend参数；
-**************************************************************/
-bool CIocpModel::PostRecv(IoContext* pIoContext)
-{
-	pIoContext->ResetBuffer();
-	pIoContext->m_OpType = OPERATION_TYPE::RECV;
-	pIoContext->m_nSendBytes = 0;
-	pIoContext->m_nTotalBytes = 0;
-	// 初始化变量
-	DWORD dwFlags = 0, dwBytes = 0;
-	// 初始化完成后，投递WSARecv请求
-	const int nBytesRecv = WSARecv(pIoContext->m_sockAccept,
-		&pIoContext->m_wsaBuf, 1, &dwBytes, &dwFlags,
-		&pIoContext->m_Overlapped, NULL);
-	// 如果返回值错误，并且错误的代码并非是Pending的话，那就说明这个重叠请求失败了
-	if ((SOCKET_ERROR == nBytesRecv) && (WSA_IO_PENDING != WSAGetLastError()))
-	{
-		this->_ShowMessage("投递第一个WSARecv失败！");
-		return false;
-	}
-	return true;
-}
-
-/*************************************************************
-*函数功能：投递WSASend请求
-*函数参数：
-IoContext* pIoContext:	用于进行IO的套接字上的结构，主要为WSARecv参数和WSASend参数
-*函数说明：调用PostWrite之前需要设置pIoContext中m_wsaBuf, m_nTotalBytes, m_nSendBytes；
-**************************************************************/
-bool CIocpModel::PostWrite(IoContext* pIoContext)
-{
-	// 初始化变量
-	////pIoContext->ResetBuffer(); //外部设置m_wsaBuf
-	pIoContext->m_OpType = OPERATION_TYPE::SEND;
-	//投递WSASend请求 -- 需要修改
-	const DWORD dwFlags = 0;
-	DWORD dwSendNumBytes = 0;
-	const int nRet = WSASend(pIoContext->m_sockAccept,
-		&pIoContext->m_wsaBuf, 1, &dwSendNumBytes, dwFlags,
-		&pIoContext->m_Overlapped, NULL);
-	// 如果返回值错误，并且错误的代码并非是Pending的话，那就说明这个重叠请求失败了
-	if ((SOCKET_ERROR == nRet) && (WSA_IO_PENDING != WSAGetLastError()))
-	{
-		this->_ShowMessage("投递WSASend失败！");
-		return false;
-	}
-	return true;
-}
-
 ////////////////////////////////
 // 初始化完成端口
 bool CIocpModel::_InitializeIOCP()
@@ -430,9 +379,62 @@ void CIocpModel::_DeInitialize()
 //================================================================================
 //				 投递完成端口请求
 //================================================================================
+
+/*************************************************************
+*函数功能：投递WSARecv请求；
+*函数参数：
+IoContext* pIoContext:	用于进行IO的套接字上的结构，主要为WSARecv参数和WSASend参数；
+**************************************************************/
+bool CIocpModel::PostRecv(IoContext* pIoContext)
+{
+	pIoContext->ResetBuffer();
+	pIoContext->m_OpType = OPERATION_TYPE::RECV;
+	pIoContext->m_nSendBytes = 0;
+	pIoContext->m_nTotalBytes = 0;
+	// 初始化变量
+	DWORD dwFlags = 0, dwBytes = 0;
+	// 初始化完成后，投递WSARecv请求
+	const int nBytesRecv = WSARecv(pIoContext->m_sockAccept,
+		&pIoContext->m_wsaBuf, 1, &dwBytes, &dwFlags,
+		&pIoContext->m_Overlapped, NULL);
+	// 如果返回值错误，并且错误的代码并非是Pending的话，那就说明这个重叠请求失败了
+	if ((SOCKET_ERROR == nBytesRecv) && (WSA_IO_PENDING != WSAGetLastError()))
+	{
+		this->_ShowMessage("投递第一个WSARecv失败！");
+		return false;
+	}
+	return true;
+}
+
+/*************************************************************
+*函数功能：投递WSASend请求
+*函数参数：
+IoContext* pIoContext:	用于进行IO的套接字上的结构，主要为WSARecv参数和WSASend参数
+*函数说明：调用PostWrite之前需要设置pIoContext中m_wsaBuf, m_nTotalBytes, m_nSendBytes；
+**************************************************************/
+bool CIocpModel::PostWrite(IoContext* pIoContext)
+{
+	// 初始化变量
+	////pIoContext->ResetBuffer(); //外部设置m_wsaBuf
+	pIoContext->m_OpType = OPERATION_TYPE::SEND;
+	//投递WSASend请求 -- 需要修改
+	const DWORD dwFlags = 0;
+	DWORD dwSendNumBytes = 0;
+	const int nRet = WSASend(pIoContext->m_sockAccept,
+		&pIoContext->m_wsaBuf, 1, &dwSendNumBytes, dwFlags,
+		&pIoContext->m_Overlapped, NULL);
+	// 如果返回值错误，并且错误的代码并非是Pending的话，那就说明这个重叠请求失败了
+	if ((SOCKET_ERROR == nRet) && (WSA_IO_PENDING != WSAGetLastError()))
+	{
+		this->_ShowMessage("投递WSASend失败！");
+		return false;
+	}
+	return true;
+}
+
 //////////////////////////////////////////////////////////////////
 // 投递Accept请求
-bool CIocpModel::_PostAccept(IoContext* pAcceptIoContext)
+bool CIocpModel::_PostAccept(IoContext* pIoContext)
 {
 	//ASSERT(INVALID_SOCKET != m_pListenContext->m_Socket);
 	if (m_pListenContext->m_Socket == INVALID_SOCKET)
@@ -440,24 +442,24 @@ bool CIocpModel::_PostAccept(IoContext* pAcceptIoContext)
 		throw "_PostAccept,m_pListenContext->m_Socket != INVALID_SOCKET";
 	}
 	// 准备参数
-	pAcceptIoContext->ResetBuffer(); 
-	pAcceptIoContext->m_OpType = OPERATION_TYPE::ACCEPT;
+	pIoContext->ResetBuffer(); 
+	pIoContext->m_OpType = OPERATION_TYPE::ACCEPT;
 	// 为以后新连入的客户端先准备好Socket( 这个是与传统accept最大的区别 ) 
-	pAcceptIoContext->m_sockAccept = WSASocket(AF_INET, SOCK_STREAM,
+	pIoContext->m_sockAccept = WSASocket(AF_INET, SOCK_STREAM,
 		IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
-	if (INVALID_SOCKET == pAcceptIoContext->m_sockAccept)
+	if (INVALID_SOCKET == pIoContext->m_sockAccept)
 	{
 		_ShowMessage("创建用于Accept的Socket失败！错误代码: %d", WSAGetLastError());
 		return false;
 	}
 	// 投递AcceptEx
 	DWORD dwBytes = 0;
-	WSABUF* pWSAbuf = &pAcceptIoContext->m_wsaBuf;
+	WSABUF* pWSAbuf = &pIoContext->m_wsaBuf;
 	if (!m_lpfnAcceptEx(m_pListenContext->m_Socket,
-		pAcceptIoContext->m_sockAccept, pWSAbuf->buf,
+		pIoContext->m_sockAccept, pWSAbuf->buf,
 		pWSAbuf->len - ((sizeof(SOCKADDR_IN) + 16) * 2),
 		sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, 
-		&dwBytes, &pAcceptIoContext->m_Overlapped))
+		&dwBytes, &pIoContext->m_Overlapped))
 	{
 		if (WSA_IO_PENDING != WSAGetLastError())
 		{

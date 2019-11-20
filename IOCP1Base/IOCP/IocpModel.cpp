@@ -218,7 +218,6 @@ bool CIocpModel::SendData(SocketContext* pSoContext, char* data, int size)
 	pNewIoContext->m_sockAccept = pSoContext->m_Socket;
 	pNewIoContext->m_OpType = OPERATION_TYPE::SEND;
 	pNewIoContext->m_nTotalBytes = size;
-	pNewIoContext->m_nSentBytes = 0;
 	pNewIoContext->m_wsaBuf.len = size;
 	memcpy(pNewIoContext->m_wsaBuf.buf, data, size);
 	if (!this->_PostSend(pSoContext, pNewIoContext))
@@ -470,8 +469,6 @@ bool CIocpModel::_DoAccept(SocketContext* pSoContext, IoContext* pIoContext)
 {//这里的pSoContext是listenSocketContext
 	InterlockedDecrement(&acceptPostCount);
 	InterlockedIncrement(&connectCount);
-	this->_ShowMessage("_DoAccept() acceptedCount=%d, nTotalBytes=%d",
-		acceptPostCount, pIoContext->m_nTotalBytes);
 	if (pIoContext->m_nTotalBytes > 0)
 	{
 		//客户接入时，第一次接收dwIOSize字节数据
@@ -504,8 +501,10 @@ bool CIocpModel::_DoFirstRecvWithData(IoContext* pIoContext)
 		sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16,
 		(LPSOCKADDR*)&localAddr, &localLen, (LPSOCKADDR*)&clientAddr, &remoteLen);
 	// 显示客户端信息
-	this->_ShowMessage("客户端 %s:%d 连好了", inet_ntoa(clientAddr->sin_addr),
+	this->_ShowMessage("客户端 %s:%d 连入了!", inet_ntoa(clientAddr->sin_addr),
 		ntohs(clientAddr->sin_port));
+	this->_ShowMessage("收到 %s:%d 信息：%s", inet_ntoa(clientAddr->sin_addr),
+		ntohs(clientAddr->sin_port), pIoContext->m_wsaBuf.buf);
 
 	////////////////////////////////////////////////////////////////////////////////
 	// 2. 这里需要注意，这里传入的这个是ListenSocket上的Context，
@@ -513,6 +512,7 @@ bool CIocpModel::_DoFirstRecvWithData(IoContext* pIoContext)
 	//	上的Context复制出来一份，为新连入的Socket新建一个SocketContext
 	//	为新接入的套接创建SocketContext，并将该套接字绑定到完成端口
 	SocketContext* pNewSocketContext = new SocketContext;
+	this->_ShowMessage("pNewSocketContext=%p", pNewSocketContext);
 	//加入到ContextList中去(需要统一管理，方便释放资源)
 	this->_AddToContextList(pNewSocketContext);
 	pNewSocketContext->m_Socket = pIoContext->m_sockAccept;
@@ -527,7 +527,15 @@ bool CIocpModel::_DoFirstRecvWithData(IoContext* pIoContext)
 
 	// 4. 如果投递成功，那么就把这个有效的客户端信息，
 	this->OnConnectionAccepted(pNewSocketContext);
-	this->_DoRecv(pNewSocketContext, pIoContext);
+	// 一定要新建一个IoContext，因为原有的是ListenSocket的
+	IoContext* pNewIoContext = pNewSocketContext->GetNewIoContext();
+	pNewIoContext->m_OpType = OPERATION_TYPE::RECV;
+	pNewIoContext->m_sockAccept = pNewSocketContext->m_Socket;
+	pNewIoContext->m_nTotalBytes = pIoContext->m_nTotalBytes;
+	pNewIoContext->m_wsaBuf.len = pIoContext->m_nTotalBytes;
+	memcpy(pNewIoContext->m_wsaBuf.buf, pIoContext->m_wsaBuf.buf,
+		pIoContext->m_nTotalBytes);	//复制数据到WSASend函数的参数缓冲区
+	this->_DoRecv(pNewSocketContext, pNewIoContext);
 
 	//////////////////////////////////////////////////////////////////////////////////
 	// 5. 使用完毕之后，把Listen Socket的那个IoContext重置，然后准备投递新的AcceptEx
@@ -550,6 +558,7 @@ bool CIocpModel::_DoFirstRecvWithoutData(IoContext* pIoContext)
 		ntohs(clientAddr.sin_port));
 	// 2. 这里需要注意，这里传入的这个是ListenSocket上的Context，
 	SocketContext* pNewSocketContext = new SocketContext;
+	this->_ShowMessage("pNewSocketContext=%p", pNewSocketContext);
 	//加入到ContextList中去(需要统一管理，方便释放资源)
 	this->_AddToContextList(pNewSocketContext);
 	pNewSocketContext->m_Socket = pIoContext->m_sockAccept;
@@ -607,9 +616,9 @@ bool CIocpModel::_PostRecv(SocketContext* pSoContext, IoContext* pIoContext)
 bool CIocpModel::_DoRecv(SocketContext* pSoContext, IoContext* pIoContext)
 {
 	// 先把上一次的数据显示出现，然后就重置状态，发出下一个Recv请求
-	SOCKADDR_IN* ClientAddr = &pSoContext->m_ClientAddr;
-	this->_ShowMessage("收到 %s:%d 信息：%s", inet_ntoa(ClientAddr->sin_addr),
-		ntohs(ClientAddr->sin_port), pIoContext->m_wsaBuf.buf);
+	SOCKADDR_IN* clientAddr = &pSoContext->m_ClientAddr;
+	this->_ShowMessage("收到 %s:%d 信息：%s", inet_ntoa(clientAddr->sin_addr),
+		ntohs(clientAddr->sin_port), pIoContext->m_wsaBuf.buf);
 	// 然后开始投递下一个WSARecv请求 //发送数据
 	//这里不应该直接PostWrite，发什么应该由应用决定
 	this->OnRecvCompleted(pSoContext, pIoContext);
@@ -667,6 +676,7 @@ bool CIocpModel::_DoSend(SocketContext* pSoContext, IoContext* pIoContext)
 
 bool CIocpModel::_DoClose(SocketContext* pSoContext)
 {
+	this->_ShowMessage("_DoClose() pSoContext=%p", pSoContext);
 	InterlockedDecrement(&connectCount);
 	this->_RemoveContext(pSoContext);
 	return true;
@@ -817,7 +827,7 @@ bool CIocpModel::HandleError(SocketContext* pSoContext, const DWORD& dwErr)
 	}
 	else
 	{//ERROR_OPERATION_ABORTED=995L
-		this->_ShowMessage("完成端口操作出现错误，线程退出。错误代码：%d", dwErr);
+		this->_ShowMessage("完成端口操作出现错误，线程退出。err=%d", dwErr);
 		this->OnConnectionError(pSoContext, dwErr);
 		this->_DoClose(pSoContext);
 		return false;
