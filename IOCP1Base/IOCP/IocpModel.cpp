@@ -440,14 +440,15 @@ bool CIocpModel::_PostAccept(IoContext* pIoContext)
 	DWORD dwBytes = 0;
 	WSABUF* pWSAbuf = &pIoContext->m_wsaBuf;
 	if (!m_lpfnAcceptEx(m_pListenContext->m_Socket,
-		pIoContext->m_sockAccept, pWSAbuf->buf, //0,
-		pWSAbuf->len - ((sizeof(SOCKADDR_IN) + 16) * 2),
+		pIoContext->m_sockAccept, pWSAbuf->buf, 0,
+		//pWSAbuf->len - ((sizeof(SOCKADDR_IN) + 16) * 2),
 		sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16,
 		&dwBytes, &pIoContext->m_Overlapped))
 	{
-		if (WSA_IO_PENDING != WSAGetLastError())
-		{
-			_ShowMessage("Í¶µÝ AcceptEx Ê§°Ü£¬err=%d", WSAGetLastError());
+		int nErr = WSAGetLastError();
+		if (WSA_IO_PENDING != nErr)
+		{// Overlapped I/O operation is in progress.
+			_ShowMessage("Í¶µÝ AcceptEx Ê§°Ü£¬err=%d", nErr);
 			return false;
 		}
 	}
@@ -469,8 +470,69 @@ SocketContext* pSoContext:	±¾´Îaccept²Ù×÷¶ÔÓ¦µÄÌ×½Ó×Ö£¬¸ÃÌ×½Ó×ÖËù¶ÔÓ¦µÄÊý¾Ý½á¹¹£
 IoContext* pIoContext:			±¾´Îaccept²Ù×÷¶ÔÓ¦µÄÊý¾Ý½á¹¹£»
 DWORD		dwIOSize:			±¾´Î²Ù×÷Êý¾ÝÊµ¼Ê´«ÊäµÄ×Ö½ÚÊý
 ********************************************************************/
+#include <mstcpip.h> //tcp_keepalive
 bool CIocpModel::_DoAccept(SocketContext* pSoContext, IoContext* pIoContext)
 {//ÕâÀïµÄpSoContextÊÇlistenSocketContext
+	InterlockedDecrement(&acceptPostCount);
+	SOCKADDR_IN* clientAddr = NULL, * localAddr = NULL;
+	int clientAddrLen = sizeof(SOCKADDR_IN), localAddrLen = sizeof(SOCKADDR_IN);
+	// 1. »ñÈ¡µØÖ·ÐÅÏ¢ £¨GetAcceptExSockAddrs²»½ö¿ÉÒÔ»ñÈ¡µØÖ·£¬»¹¿ÉÒÔË³±ãÈ¡Êý¾Ý£©
+	this->m_lpfnGetAcceptExSockAddrs(pIoContext->m_wsaBuf.buf, 0,
+		localAddrLen, clientAddrLen, (LPSOCKADDR*)&localAddr,
+		&localAddrLen, (LPSOCKADDR*)&clientAddr, &clientAddrLen);
+
+	// 2. ÎªÐÂÁ¬½Ó½¨Á¢Ò»¸öSocketContext 
+	SocketContext* pNewSocketContext = new SocketContext;
+	//¼ÓÈëµ½ContextListÖÐÈ¥(ÐèÒªÍ³Ò»¹ÜÀí£¬·½±ãÊÍ·Å×ÊÔ´)
+	this->_AddToContextList(pNewSocketContext);
+	pNewSocketContext->m_Socket = pIoContext->m_sockAccept;
+	memcpy_s(&(pNewSocketContext->m_ClientAddr), sizeof(SOCKADDR_IN),
+		&clientAddr, sizeof(SOCKADDR_IN));
+
+	// 3. ½«listenSocketContextµÄIOContext ÖØÖÃºó¼ÌÐøÍ¶µÝAcceptEx
+	if (!_PostAccept(pIoContext))
+	{
+		pSoContext->RemoveContext(pIoContext);
+	}
+
+	// 4. ½«ÐÂsocketºÍÍê³É¶Ë¿Ú°ó¶¨
+	if (!this->_AssociateWithIOCP(pNewSocketContext))
+	{//ÎÞÐèRELEASE_POINTER£¬Ê§°ÜÊ±£¬ÒÑ¾­releaseÁË
+		// RELEASE_POINTER(pNewSocketContext);
+		return false;
+	}
+
+	// ²¢ÉèÖÃtcp_keepalive
+	tcp_keepalive alive_in = { 0 }, alive_out = { 0 };
+	// 60s  ¶à³¤Ê±¼ä£¨ ms £©Ã»ÓÐÊý¾Ý¾Í¿ªÊ¼ send ÐÄÌø°ü
+	alive_in.keepalivetime = 1000 * 60; //1·ÖÖÓ
+	// 10s  Ã¿¸ô¶à³¤Ê±¼ä£¨ ms £© send Ò»¸öÐÄÌø°ü
+	alive_in.keepaliveinterval = 1000 * 10; //10s
+	alive_in.onoff = TRUE;
+	DWORD lpcbBytesReturned = 0;
+	if (SOCKET_ERROR == WSAIoctl(pNewSocketContext->m_Socket,
+		SIO_KEEPALIVE_VALS, &alive_in, sizeof(alive_in), &alive_out,
+		sizeof(alive_out), &lpcbBytesReturned, NULL, NULL))
+	{
+		_ShowMessage("WSAIoctl() failed: %d\n", WSAGetLastError());
+	}
+	OnConnectionAccepted(pNewSocketContext);
+
+	// 5. ½¨Á¢recv²Ù×÷ËùÐèµÄioContext£¬ÔÚÐÂÁ¬½ÓµÄsocketÉÏÍ¶µÝrecvÇëÇó
+	IoContext* pNewIoContext = pNewSocketContext->GetNewIoContext();
+	if (pNewIoContext != NULL)
+	{//²»³É¹¦£¬»áÔõÃ´Ñù£¿
+		pNewIoContext->m_OpType = OPERATION_TYPE::RECV;
+		pNewIoContext->m_sockAccept = pNewSocketContext->m_Socket;
+		// Í¶µÝrecvÇëÇó
+		return _PostRecv(pNewSocketContext, pNewIoContext);
+	}
+	else 
+	{
+		_DoClose(pNewSocketContext);
+		return false;
+	}
+#if 0 //Ã²ËÆÎÞÐèÇø·Ö ÊÇ·ñWithData
 	InterlockedDecrement(&acceptPostCount);
 	if (pIoContext->m_nTotalBytes > 0)
 	{
@@ -484,6 +546,7 @@ bool CIocpModel::_DoAccept(SocketContext* pSoContext, IoContext* pIoContext)
 	}
 	// 5. Ê¹ÓÃÍê±ÏÖ®ºó£¬°ÑListen SocketµÄÄÇ¸öIoContextÖØÖÃ£¬È»ºó×¼±¸Í¶µÝÐÂµÄAcceptEx
 	return this->_PostAccept(pIoContext);
+#endif
 }
 
 /*************************************************************
@@ -605,11 +668,15 @@ bool CIocpModel::_PostRecv(SocketContext* pSoContext, IoContext* pIoContext)
 		&pIoContext->m_wsaBuf, 1, &dwBytes, &dwFlags,
 		&pIoContext->m_Overlapped, NULL);
 	// Èç¹û·µ»ØÖµ´íÎó£¬²¢ÇÒ´íÎóµÄ´úÂë²¢·ÇÊÇPendingµÄ»°£¬ÄÇ¾ÍËµÃ÷Õâ¸öÖØµþÇëÇóÊ§°ÜÁË
-	if ((SOCKET_ERROR == nBytesRecv) && (WSA_IO_PENDING != WSAGetLastError()))
+	if (SOCKET_ERROR == nBytesRecv)
 	{
-		this->_ShowMessage("Í¶µÝWSARecvÊ§°Ü£¡err=%d", WSAGetLastError());
-		this->_DoClose(pSoContext);
-		return false;
+		int nErr = WSAGetLastError();
+		if (WSA_IO_PENDING != nErr)
+		{// Overlapped I/O operation is in progress.
+			this->_ShowMessage("Í¶µÝWSARecvÊ§°Ü£¡err=%d", nErr);
+			this->_DoClose(pSoContext);
+			return false;
+		}
 	}
 	return true;
 }
@@ -649,11 +716,15 @@ bool CIocpModel::_PostSend(SocketContext* pSoContext, IoContext* pIoContext)
 		&pIoContext->m_wsaBuf, 1, &dwSendNumBytes, dwFlags,
 		&pIoContext->m_Overlapped, NULL);
 	// Èç¹û·µ»ØÖµ´íÎó£¬²¢ÇÒ´íÎóµÄ´úÂë²¢·ÇÊÇPendingµÄ»°£¬ÄÇ¾ÍËµÃ÷Õâ¸öÖØµþÇëÇóÊ§°ÜÁË
-	if ((SOCKET_ERROR == nRet) && (WSA_IO_PENDING != WSAGetLastError()))
+	if (SOCKET_ERROR == nRet)
 	{ //WSAENOTCONN=10057L
-		this->_ShowMessage("Í¶µÝWSASendÊ§°Ü£¡err=%d", WSAGetLastError());
-		this->_DoClose(pSoContext);
-		return false;
+		int nErr = WSAGetLastError();
+		if (WSA_IO_PENDING != nErr)
+		{// Overlapped I/O operation is in progress.
+			this->_ShowMessage("Í¶µÝWSASendÊ§°Ü£¡err=%d", nErr);
+			this->_DoClose(pSoContext);
+			return false;
+		}
 	}
 	return true;
 }
