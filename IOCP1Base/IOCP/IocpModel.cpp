@@ -203,6 +203,10 @@ void CIocpModel::Stop()
 		this->_DeInitialize();
 		this->_ShowMessage("停止监听");
 	}
+	else
+	{
+		m_pListenContext = nullptr;
+	}
 }
 
 bool CIocpModel::SendData(SocketContext* pSoContext, char* data, int size)
@@ -831,7 +835,7 @@ bool CIocpModel::HandleError(SocketContext* pSoContext, const DWORD& dwErr)
 	}
 	else
 	{//ERROR_OPERATION_ABORTED=995L
-		this->_ShowMessage("完成端口操作出现错误，线程退出。err=%d", dwErr);
+		this->_ShowMessage("完成端口操作出错，线程退出。err=%d", dwErr);
 		this->OnConnectionError(pSoContext, dwErr);
 		this->_DoClose(pSoContext);
 		return false;
