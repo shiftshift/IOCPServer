@@ -15,6 +15,7 @@ CIocpModel::CIocpModel(void) :
 	acceptPostCount(0),
 	connectCount(0)
 {
+	errorCount = 0;
 	m_LogFunc = nullptr;
 	this->LoadSocketLib();
 }
@@ -473,6 +474,7 @@ DWORD		dwIOSize:			本次操作数据实际传输的字节数
 #include <mstcpip.h> //tcp_keepalive
 bool CIocpModel::_DoAccept(SocketContext* pSoContext, IoContext* pIoContext)
 {//这里的pSoContext是listenSocketContext
+	InterlockedIncrement(&connectCount);
 	InterlockedDecrement(&acceptPostCount);
 	SOCKADDR_IN* clientAddr = NULL, * localAddr = NULL;
 	int clientAddrLen = sizeof(SOCKADDR_IN), localAddrLen = sizeof(SOCKADDR_IN);
@@ -753,9 +755,11 @@ bool CIocpModel::_DoClose(SocketContext* pSoContext)
 	//this->_ShowMessage("_DoClose() pSoContext=%p", pSoContext);
 	if (pSoContext != m_pListenContext)
 	{// m_pListenContext不在vector中，找不到
+		InterlockedDecrement(&connectCount);
 		this->_RemoveContext(pSoContext);
 		return true;
 	}
+	InterlockedIncrement(&errorCount);
 	return false;
 }
 
@@ -784,7 +788,6 @@ void CIocpModel::_AddToContextList(SocketContext* pSoContext)
 {
 	EnterCriticalSection(&m_csContextList);
 	m_arrayClientContext.push_back(pSoContext);
-	InterlockedIncrement(&connectCount);
 	LeaveCriticalSection(&m_csContextList);
 }
 
@@ -803,7 +806,6 @@ void CIocpModel::_RemoveContext(SocketContext* pSoContext)
 			delete pSoContext;
 			pSoContext = nullptr;
 			it = m_arrayClientContext.erase(it);
-			InterlockedDecrement(&connectCount);
 			break;
 		}
 		it++;

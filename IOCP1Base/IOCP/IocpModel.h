@@ -75,6 +75,7 @@ private:
 	SocketContext* m_pListenContext; // 用于监听的Socket的Context信息
 	LONG acceptPostCount; // 当前投递的的Accept数量
 	LONG connectCount; // 当前的连接数量
+	LONG errorCount; // 当前的错误数量
 
 	// AcceptEx 和 GetAcceptExSockaddrs 的函数指针，用于调用这两个扩展函数
 	// GetAcceptExSockAddrs函数指针,win8.1以后才支持
