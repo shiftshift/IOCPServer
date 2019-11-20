@@ -52,7 +52,8 @@ struct IoContext
 	{
 		if (m_sockAccept != INVALID_SOCKET)
 		{
-			closesocket(m_sockAccept); //?
+			//SocketContext已经关闭过了
+			//closesocket(m_sockAccept); //!
 			m_sockAccept = INVALID_SOCKET;
 		}
 	}
