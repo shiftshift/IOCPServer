@@ -468,7 +468,6 @@ DWORD		dwIOSize:			本次操作数据实际传输的字节数
 bool CIocpModel::_DoAccept(SocketContext* pSoContext, IoContext* pIoContext)
 {//这里的pSoContext是listenSocketContext
 	InterlockedDecrement(&acceptPostCount);
-	InterlockedIncrement(&connectCount);
 	if (pIoContext->m_nTotalBytes > 0)
 	{
 		//客户接入时，第一次接收dwIOSize字节数据
@@ -676,8 +675,7 @@ bool CIocpModel::_DoSend(SocketContext* pSoContext, IoContext* pIoContext)
 
 bool CIocpModel::_DoClose(SocketContext* pSoContext)
 {
-	this->_ShowMessage("_DoClose() pSoContext=%p", pSoContext);
-	InterlockedDecrement(&connectCount);
+	//this->_ShowMessage("_DoClose() pSoContext=%p", pSoContext);
 	this->_RemoveContext(pSoContext);
 	return true;
 }
@@ -707,6 +705,7 @@ void CIocpModel::_AddToContextList(SocketContext* pSoContext)
 {
 	EnterCriticalSection(&m_csContextList);
 	m_arrayClientContext.push_back(pSoContext);
+	InterlockedIncrement(&connectCount);
 	LeaveCriticalSection(&m_csContextList);
 }
 
@@ -725,6 +724,7 @@ void CIocpModel::_RemoveContext(SocketContext* pSoContext)
 			delete pSoContext;
 			pSoContext = nullptr;
 			it = m_arrayClientContext.erase(it);
+			InterlockedDecrement(&connectCount);
 			break;
 		}
 		it++;
