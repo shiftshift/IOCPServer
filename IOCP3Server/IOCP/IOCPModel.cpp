@@ -504,8 +504,7 @@ bool CIocpModel::_DoAccpet(SocketContext* pSocketContext, IoContext* pIoContext)
 **************************************************************/
 bool CIocpModel::_DoFirstRecvWithData(IoContext* pIoContext)
 {
-	SOCKADDR_IN* ClientAddr = NULL;
-	SOCKADDR_IN* LocalAddr = NULL;
+	SOCKADDR_IN* ClientAddr = NULL, * LocalAddr = NULL;
 	int remoteLen = sizeof(SOCKADDR_IN), localLen = sizeof(SOCKADDR_IN);
 
 	///////////////////////////////////////////////////////////////////////////
@@ -520,6 +519,8 @@ bool CIocpModel::_DoFirstRecvWithData(IoContext* pIoContext)
 	//显示客户端信息
 	this->_ShowMessage("客户端 %s:%d 连入", inet_ntoa(ClientAddr->sin_addr),
 		ntohs(ClientAddr->sin_port));
+	this->_ShowMessage("收到 %s:%d 信息：%s", inet_ntoa(ClientAddr->sin_addr),
+		ntohs(ClientAddr->sin_port), pIoContext->m_wsaBuf.buf);
 
 	////////////////////////////////////////////////////////////////////////////////
 	// 2. 这里需要注意，这里传入的这个是ListenSocket上的Context，
