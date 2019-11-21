@@ -436,15 +436,15 @@ bool CIocpModel::_PostAccept(IoContext* pIoContext)
 		_ShowMessage("创建用于Accept的Socket失败！err=%d", WSAGetLastError());
 		return false;
 	}
-	// 投递AcceptEx // 将接收缓冲置为0,令AcceptEx直接返回,防止拒绝服务攻击
-	//https://docs.microsoft.com/zh-cn/windows/win32/api/mswsock/nf-mswsock-acceptex	
-	DWORD dwBytes = 0;
-	WSABUF* pWSAbuf = &pIoContext->m_wsaBuf;
+	//https://docs.microsoft.com/zh-cn/windows/win32/api/mswsock/nf-mswsock-acceptex
+	// 投递AcceptEx // 将接收缓冲置为0,令AcceptEx直接返回,防止拒绝服务攻击	
+	DWORD dwBytes = 0, dwAddrLen = (sizeof(SOCKADDR_IN) + 16);
+	WSABUF* pWSAbuf = &pIoContext->m_wsaBuf; //必须+16,参见MSDN
 	if (!m_lpfnAcceptEx(m_pListenContext->m_Socket,
-		pIoContext->m_sockAccept, pWSAbuf->buf, //0,
-		pWSAbuf->len - ((sizeof(SOCKADDR_IN) + 16) * 2),
-		sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16,
-		&dwBytes, &pIoContext->m_Overlapped))
+		pIoContext->m_sockAccept, pWSAbuf->buf,
+		0, //pWSAbuf->len - (dwAddrLen * 2),
+		dwAddrLen, dwAddrLen, &dwBytes,
+		&pIoContext->m_Overlapped))
 	{
 		int nErr = WSAGetLastError();
 		if (WSA_IO_PENDING != nErr)
@@ -476,19 +476,14 @@ bool CIocpModel::_DoAccept(SocketContext* pSoContext, IoContext* pIoContext)
 {//这里的pSoContext是listenSocketContext
 	InterlockedIncrement(&connectCount);
 	InterlockedDecrement(&acceptPostCount);
-#if 0 //无法得到对方的IP地址呢！
+#if 1 //无法得到对方的IP地址呢！
 	SOCKADDR_IN* clientAddr = NULL, * localAddr = NULL;
-	int remoteLen, localLen, addrLen = sizeof(SOCKADDR_IN);
+	DWORD dwAddrLen = (sizeof(SOCKADDR_IN) + 16);
+	int remoteLen = 0, localLen = 0; //必须+16,参见MSDN
 	this->m_lpfnGetAcceptExSockAddrs(pIoContext->m_wsaBuf.buf,
-		pIoContext->m_wsaBuf.len - ((addrLen + 16) * 2),
-		addrLen + 16, addrLen + 16, (LPSOCKADDR*)&localAddr,
+		0, //pIoContext->m_wsaBuf.len - (dwAddrLen * 2),
+		dwAddrLen, dwAddrLen, (LPSOCKADDR*)&localAddr,
 		&localLen, (LPSOCKADDR*)&clientAddr, &remoteLen);
-	if (remoteLen < addrLen)
-	{
-		remoteLen = addrLen; //_Inout_
-		addrLen = getpeername(pIoContext->m_sockAccept,
-			(SOCKADDR*)&clientAddr, &remoteLen);
-	}
 
 	// 2. 为新连接建立一个SocketContext 
 	SocketContext* pNewSocketContext = new SocketContext;
@@ -536,7 +531,7 @@ bool CIocpModel::_DoAccept(SocketContext* pSoContext, IoContext* pIoContext)
 		// 投递recv请求
 		return _PostRecv(pNewSocketContext, pNewIoContext);
 	}
-	else 
+	else
 	{
 		_DoClose(pNewSocketContext);
 		return false;
