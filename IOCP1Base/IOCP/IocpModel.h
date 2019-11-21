@@ -109,7 +109,7 @@ public:
 
 	// 获取当前连接数
 	int GetConnectCount() { return connectCount; }
-	// 获取当前连接数
+	// 获取当前监听端口
 	unsigned int GetPort() { return m_nPort; }
 
 	// 事件通知函数(派生类重载此族函数)
