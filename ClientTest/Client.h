@@ -13,7 +13,7 @@ Notes:
 #define MAX_BUFFER_LEN 8196 
 #define DEFAULT_PORT 10240 // 默认端口
 #define DEFAULT_IP _T("127.0.0.1") // 默认IP地址
-#define DEFAULT_THREADS 100 // 默认并发线程数
+#define DEFAULT_THREADS 10000 // 默认并发线程数
 #define DEFAULT_TIMES 10000 // 默认发送次数
 #define DEFAULT_MESSAGE _T("Hello!") // 默认的发送信息
 
@@ -88,11 +88,20 @@ private:
 	int m_nPort; // 监听端口
 	int m_nTimes; // 并发线程发送次数
 	int m_nThreads; // 并发线程数量
-	HANDLE* m_phWorkerThreads; //所有工作线程
-	DWORD* m_pWorkerThreadIds; //所有工作线程的ID
+	//HANDLE* m_phWorkerThreads; //所有工作线程
+	//DWORD* m_pWorkerThreadIds; //所有工作线程的ID
+	WorkerThreadParam* m_pWorkerParams; // 线程参数
 	HANDLE m_hConnectionThread; // 接受连接的线程句柄
 	HANDLE m_hShutdownEvent; // 通知线程，为了更好的退出线程
 	LONG m_nRunningWorkerThreads; // 正在运行的并发线程数量
-
-	WorkerThreadParam* m_pWorkerParams; // 线程参数
+	//使用线程池，进行操作
+	TP_CALLBACK_ENVIRON te;
+	PTP_POOL threadPool;
+	PTP_CLEANUP_GROUP cleanupGroup;
+	PTP_WORK* pWorks; 
+	
+	static void NTAPI CClient::poolThreadWork(
+		_Inout_ PTP_CALLBACK_INSTANCE Instance,
+		_Inout_opt_ PVOID Context,
+		_Inout_ PTP_WORK Work);
 };

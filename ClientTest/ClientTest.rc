@@ -134,8 +134,8 @@ BEGIN
         BLOCK "080403a8"
         BEGIN
             VALUE "CompanyName", "<杭州山不高>"
-            VALUE "FileDescription", "本文件用于对服务器进行压力测试，同时开启很多个线程，去连接指定服务器的指定端口，并且狂发数据。"
-            VALUE "FileVersion", "1.0.0.1"
+            VALUE "FileDescription", "服务器压力测试工具！"
+            VALUE "FileVersion", "1.0.1.0"
             VALUE "InternalName", "ClientTest.exe"
             VALUE "LegalCopyright", "(C) <GaoJS>。保留所有权利。"
             VALUE "OriginalFilename", "ClientTest.exe"

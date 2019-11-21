@@ -16,7 +16,8 @@ CClient::CClient(void) :
 	m_pMain(NULL),
 	m_nPort(DEFAULT_PORT),
 	m_strMessage(DEFAULT_MESSAGE),
-	m_phWorkerThreads(NULL),
+	//m_phWorkerThreads(NULL),
+	//m_pWorkerThreadIds(NULL),
 	m_hConnectionThread(NULL),
 	m_hShutdownEvent(NULL)
 {
@@ -96,7 +97,7 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 		pClient->ShowMessage(_T("测试并发 %d 个线程完毕."),
 			pClient->m_nThreads);
 	}
-	DWORD dwThreadId = GetCurrentThreadId();
+	/*DWORD dwThreadId = GetCurrentThreadId();
 	for (int i = 0; i < pClient->m_nThreads; i++)
 	{
 		if (dwThreadId == pClient->m_pWorkerThreadIds[i])
@@ -104,21 +105,40 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 			pClient->m_pWorkerThreadIds[i] = 0;
 			break;
 		}
-	}
+	}*/
 	InterlockedDecrement(&pClient->m_nRunningWorkerThreads);
 	return 0;
 }
+
+void NTAPI CClient::poolThreadWork(
+	_Inout_ PTP_CALLBACK_INSTANCE Instance,
+	_Inout_opt_ PVOID Context, _Inout_ PTP_WORK Work)
+{
+	_WorkerThread(Context);
+}
+
 ///////////////////////////////////////////////////////////////////////////////////
 // 建立连接
 bool CClient::EstablishConnections()
 {
 	DWORD nThreadID = 0;
 	PCSTR pData = m_strMessage.GetString();
-	m_phWorkerThreads = new HANDLE[m_nThreads];
-	m_pWorkerThreadIds = new DWORD[m_nThreads];
+	//m_phWorkerThreads = new HANDLE[m_nThreads];
+	//m_pWorkerThreadIds = new DWORD[m_nThreads];
+	//memset(m_phWorkerThreads, 0, sizeof(HANDLE) * m_nThreads);
 	m_pWorkerParams = new WorkerThreadParam[m_nThreads];
-	memset(m_phWorkerThreads, 0, sizeof(HANDLE) * m_nThreads);
 	memset(m_pWorkerParams, 0, sizeof(WorkerThreadParam) * m_nThreads);
+
+	// 初始化线程池
+	InitializeThreadpoolEnvironment(&te);
+	threadPool = CreateThreadpool(NULL);
+	BOOL bRet = SetThreadpoolThreadMinimum(threadPool, 2);
+	SetThreadpoolThreadMaximum(threadPool, m_nThreads);
+	SetThreadpoolCallbackPool(&te, threadPool);	
+	cleanupGroup = CreateThreadpoolCleanupGroup();
+	SetThreadpoolCallbackCleanupGroup(&te, cleanupGroup, NULL);
+	pWorks = new PTP_WORK[m_nThreads];
+
 	// 根据用户设置的线程数量，生成每一个线程连接至服务器，并生成线程发送数据
 	for (int i = 0; i < m_nThreads; i++)
 	{
@@ -142,9 +162,16 @@ bool CClient::EstablishConnections()
 		Sleep(10);
 		// 如果连接服务器成功，就开始建立工作者线程，向服务器发送指定数据
 		m_pWorkerParams[i].pClient = this;
-		m_phWorkerThreads[i] = CreateThread(0, 0, _WorkerThread,
+		/*m_phWorkerThreads[i] = CreateThread(0, 0, _WorkerThread,
 			(void*)(&m_pWorkerParams[i]), 0, &nThreadID);
-		m_pWorkerThreadIds[i] = nThreadID;
+		m_pWorkerThreadIds[i] = nThreadID;*/
+
+		pWorks[i] = CreateThreadpoolWork(poolThreadWork,
+			(PVOID)&m_pWorkerParams[i], &te);
+		if (pWorks[i] != NULL)
+		{
+			SubmitThreadpoolWork(pWorks[i]);
+		}
 	}
 	return true;
 }
@@ -232,7 +259,7 @@ void CClient::Stop()
 	int nRet = WaitForSingleObject(m_hConnectionThread, 1000);
 	//ShowMessage("WaitForSingleObject() nRet=%d", nRet);
 	// 关闭所有的Socket
-	if (m_pWorkerParams && m_phWorkerThreads)
+	if (m_pWorkerParams) // && m_phWorkerThreads)
 	{
 		for (int i = 0; i < m_nThreads; i++)
 		{
@@ -256,8 +283,14 @@ void CClient::Stop()
 void CClient::CleanUp()
 {
 	if (m_hShutdownEvent == NULL) return;
-	RELEASE_ARRAY(m_phWorkerThreads);
-	RELEASE_ARRAY(m_pWorkerThreadIds);
+	// 取消所有线程池中的线程
+	CloseThreadpoolCleanupGroupMembers(cleanupGroup, TRUE, NULL);
+	DestroyThreadpoolEnvironment(&te);
+	CloseThreadpool(threadPool);
+	delete[]pWorks;
+	pWorks = NULL;
+	//RELEASE_ARRAY(m_phWorkerThreads);
+	//RELEASE_ARRAY(m_pWorkerThreadIds);
 	RELEASE_HANDLE(m_hConnectionThread);
 	RELEASE_ARRAY(m_pWorkerParams);
 	RELEASE_HANDLE(m_hShutdownEvent);
