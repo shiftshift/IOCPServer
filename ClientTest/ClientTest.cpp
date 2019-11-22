@@ -45,7 +45,7 @@ BOOL CClientTestApp::InitInstance()
 	SetRegistryKey(_T("应用程序向导生成的本地应用程序"));
 
 	CMainDlg dlg;
-	m_pMainWnd = &dlg;
+	m_pMainWnd = &dlg; // dlg.DoModal会崩溃
 	INT_PTR nResponse = dlg.DoModal();
 	if (nResponse == IDOK)
 	{

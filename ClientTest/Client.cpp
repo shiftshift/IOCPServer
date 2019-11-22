@@ -21,6 +21,7 @@ CClient::CClient(void) :
 	m_hConnectionThread(NULL),
 	m_hShutdownEvent(NULL)
 {
+	m_LogFunc = NULL;
 }
 
 CClient::~CClient(void)
@@ -61,10 +62,11 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 		{
 			break; /// return true;
 		}
-		memset(szRecv, 0, MAX_BUFFER_LEN);
+		memset(szRecv, 0, sizeof(szRecv));
 		memset(szTemp, 0, sizeof(szTemp));
 		// 向服务器发送信息
-		sprintf(szTemp, ("Msg:[%d] Thread:[%d], Data:[%s]"),
+		snprintf(szTemp, sizeof(szTemp) - 1,
+			("Msg:[%d] Thread:[%d], Data:[%s]"),
 			i, pParams->nThreadNo, pParams->szSendBuffer);
 		nBytesSent = send(pParams->sock, szTemp, strlen(szTemp), 0);
 		if (SOCKET_ERROR == nBytesSent)
@@ -84,7 +86,8 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 			break; /// return 1;
 		}
 		pParams->szRecvBuffer[nBytesRecv] = 0;
-		sprintf(szTemp, ("RECV: Msg:[%d] Thread[%d], Data[%s]"),
+		snprintf(szTemp, sizeof(szTemp) - 1,
+			("RECV: Msg:[%d] Thread[%d], Data[%s]"),
 			i, pParams->nThreadNo, pParams->szRecvBuffer);
 		pClient->ShowMessage(szTemp);
 		Sleep(100);
@@ -317,15 +320,15 @@ CString CClient::GetLocalIP()
 // 在主界面中显示信息
 void CClient::ShowMessage(const char* szFormat, ...)
 {
-	if (m_LogFunc)
+	if (this->m_LogFunc)
 	{
 		char buff[256] = { 0 };
 		va_list arglist;
 		// 处理变长参数
 		va_start(arglist, szFormat);
-		vsnprintf(buff, sizeof(buff), szFormat, arglist);
+		vsnprintf(buff, sizeof(buff) - 1, szFormat, arglist);
 		va_end(arglist);
 
-		m_LogFunc(string(buff));
+		this->m_LogFunc(string(buff));
 	}
 }

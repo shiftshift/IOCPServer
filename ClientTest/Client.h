@@ -12,7 +12,7 @@ using std::string;
 // 屏蔽deprecation警告
 #pragma warning(disable: 4996)
 // 缓冲区长度(8*1024字节)
-#define MAX_BUFFER_LEN 8196 
+#define MAX_BUFFER_LEN (4*1024)//(8*1024)
 #define DEFAULT_PORT 10240 // 默认端口
 #define DEFAULT_IP _T("127.0.0.1") // 默认IP地址
 #define DEFAULT_THREADS 10000 // 默认并发线程数
@@ -82,6 +82,7 @@ private:
 	void CleanUp();
 
 private:
+	LOG_FUNC m_LogFunc;
 	//CDialog* m_pMain; // 界面指针
 	CString m_strServerIP; // 服务器端的IP地址
 	CString m_strLocalIP; // 本机IP地址
@@ -99,17 +100,15 @@ private:
 	TP_CALLBACK_ENVIRON te;
 	PTP_POOL threadPool;
 	PTP_CLEANUP_GROUP cleanupGroup;
-	PTP_WORK* pWorks; 
-	
+	PTP_WORK* pWorks;
+
 	static void NTAPI CClient::poolThreadWork(
 		_Inout_ PTP_CALLBACK_INSTANCE Instance,
 		_Inout_opt_ PVOID Context,
 		_Inout_ PTP_WORK Work);
-		
+
 public:
 	// 在主界面中显示信息
 	void ShowMessage(const char* szFormat, ...);
 	void SetLogFunc(LOG_FUNC fn) { m_LogFunc = fn; }
-protected:
-	LOG_FUNC m_LogFunc;
 };

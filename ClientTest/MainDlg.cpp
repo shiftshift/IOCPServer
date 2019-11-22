@@ -165,16 +165,19 @@ void CMainDlg::InitGUI()
 
 void CMainDlg::AddInformation(const string& strInfo)
 {
-	if (g_hWnd)
+	int len = strInfo.size();
+	if (g_hWnd && len > 0)
 	{
-		DWORD_PTR dwResult = 0;
-		LRESULT lr = ::SendMessageTimeout(g_hWnd,
-			WM_ADD_LIST_ITEM, 0, (LPARAM)&strInfo,
-			SMTO_ABORTIFHUNG | SMTO_NORMAL, //| SMTO_BLOCK,
-			500, &dwResult);
-		if (!lr)
-		{//ERROR_TIMEOUT=1460L
-			lr = GetLastError();
+		char* pStr = new char[len +1];
+		if (pStr)
+		{
+			memset(pStr, 0, len + 1);
+			strncpy(pStr, strInfo.c_str(), len);		
+			if (!::PostMessage(g_hWnd, WM_ADD_LIST_ITEM, 
+				0, (LPARAM)pStr))
+			{
+				delete[]pStr;
+			}
 		}
 	}
 }
@@ -183,15 +186,15 @@ LRESULT CMainDlg::OnAddListItem(WPARAM wParam, LPARAM lParam)
 {
 	if (lParam)
 	{
-		string* pStr = ((string*)lParam);
+		char* pStr = ((char*)lParam);
 		CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
 		int count = pList->GetItemCount();
 		while (count > MAX_LIST_ITEM_COUNT)
 		{//列表框内容太多，肯定会出问题的
 			pList->DeleteItem(--count);
 		}
-		pList->InsertItem(0, (*pStr).c_str());
-		//delete pStr;
+		pList->InsertItem(0, pStr);
+		delete []pStr;
 	}
 	return 0;
 }
