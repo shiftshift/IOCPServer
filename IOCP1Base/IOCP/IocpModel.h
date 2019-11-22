@@ -15,6 +15,7 @@ Notes:
 #include "PerSocketContext.h"
 
 #define WORKER_THREADS_PER_PROCESSOR 2 // 每一个处理器上产生多少个线程
+#define MAX_LISTEN_SOCKET SOMAXCONN // 同时监听的SOCKET数量//SOMAXCONN
 #define MAX_POST_ACCEPT 10 // 同时投递的AcceptEx请求的数量
 #define EXIT_CODE NULL // 传递给Worker线程的退出信号
 #define DEFAULT_IP "127.0.0.1" //默认IP地址

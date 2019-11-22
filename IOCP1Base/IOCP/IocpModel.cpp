@@ -335,7 +335,7 @@ bool CIocpModel::_InitializeListenSocket()
 	}
 
 	// 开始进行监听
-	if (SOCKET_ERROR == listen(m_pListenContext->m_Socket, SOMAXCONN))
+	if (SOCKET_ERROR == listen(m_pListenContext->m_Socket, MAX_LISTEN_SOCKET))
 	{
 		this->_ShowMessage("listen()出错, err=%d", WSAGetLastError());
 		this->_DeInitialize();
