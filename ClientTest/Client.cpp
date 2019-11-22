@@ -34,9 +34,9 @@ DWORD WINAPI CClient::_ConnectionThread(LPVOID lpParam)
 {
 	ConnectionThreadParam* pParams = (ConnectionThreadParam*)lpParam;
 	CClient* pClient = (CClient*)pParams->pClient;
-	TRACE("_AcceptThread启动，系统监听中...\n");
+	pClient->ShowMessage("_AcceptThread启动，系统监听中...\n");
 	pClient->EstablishConnections();
-	TRACE(_T("_ConnectionThread线程结束.\n"));
+	pClient->ShowMessage("_ConnectionThread线程结束.\n");
 	RELEASE_POINTER(pParams);
 	return 0;
 }
@@ -59,7 +59,6 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 		int nRet = WaitForSingleObject(pClient->m_hShutdownEvent, 0);
 		if (WAIT_OBJECT_0 == nRet)
 		{
-			TRACE(_T("接收到用户停止命令.\n"));
 			break; /// return true;
 		}
 		memset(szRecv, 0, MAX_BUFFER_LEN);
@@ -70,19 +69,18 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 		nBytesSent = send(pParams->sock, szTemp, strlen(szTemp), 0);
 		if (SOCKET_ERROR == nBytesSent)
 		{
-			TRACE("send ERROR: ErrCode=[%ld]\n", WSAGetLastError());
+			pClient->ShowMessage("send ERROR: ErrCode=[%ld]\n", WSAGetLastError());
 			break; /// return 1;
 		}
 		pClient->ShowMessage("SENT: %s", szTemp);
-		TRACE("SENT: %s\n", szTemp);
 
-		memset(pParams->szRecvBuffer, 0, MAX_BUFFER_LEN);
 		memset(szTemp, 0, sizeof(szTemp));
+		memset(pParams->szRecvBuffer, 0, MAX_BUFFER_LEN);
 		nBytesRecv = recv(pParams->sock, pParams->szRecvBuffer,
 			MAX_BUFFER_LEN, 0);
 		if (SOCKET_ERROR == nBytesRecv)
 		{
-			TRACE("recv ERROR: ErrCode=[%ld]\n", WSAGetLastError());
+			pClient->ShowMessage("recv ERROR: ErrCode=[%ld]\n", WSAGetLastError());
 			break; /// return 1;
 		}
 		pParams->szRecvBuffer[nBytesRecv] = 0;
@@ -145,11 +143,11 @@ bool CClient::EstablishConnections()
 		// 监听用户的停止事件
 		if (WAIT_OBJECT_0 == WaitForSingleObject(m_hShutdownEvent, 0))
 		{
-			TRACE(_T("接收到用户停止命令.\n"));
+			ShowMessage("接收到用户停止命令.\n");
 			return true;
 		}
 		// 向服务器进行连接
-		if (!this->ConnetToServer(m_pWorkerParams[i].sock,
+		if (!this->ConnectToServer(m_pWorkerParams[i].sock,
 			m_strServerIP, m_nPort))
 		{
 			ShowMessage(_T("连接服务器失败！"));
@@ -178,7 +176,7 @@ bool CClient::EstablishConnections()
 
 ////////////////////////////////////////////////////////////////////////////////////
 //	向服务器进行Socket连接
-bool CClient::ConnetToServer(SOCKET& pSocket, CString strServer, int nPort)
+bool CClient::ConnectToServer(SOCKET& pSocket, CString strServer, int nPort)
 {
 	struct sockaddr_in ServerAddress;
 	struct hostent* Server;
@@ -186,7 +184,7 @@ bool CClient::ConnetToServer(SOCKET& pSocket, CString strServer, int nPort)
 	pSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (INVALID_SOCKET == pSocket)
 	{
-		TRACE("错误：初始化Socket失败，错误信息：%d\n",
+		ShowMessage("错误：初始化Socket失败，错误信息：%d\n",
 			WSAGetLastError());
 		pSocket = NULL;
 		return false;
@@ -195,7 +193,7 @@ bool CClient::ConnetToServer(SOCKET& pSocket, CString strServer, int nPort)
 	Server = gethostbyname(strServer.GetString());
 	if (Server == NULL)
 	{
-		TRACE("错误：无效的服务器地址.\n");
+		ShowMessage("错误：无效的服务器地址.\n");
 		closesocket(pSocket);
 		pSocket = NULL;
 		return false;
@@ -210,7 +208,7 @@ bool CClient::ConnetToServer(SOCKET& pSocket, CString strServer, int nPort)
 		reinterpret_cast<const struct sockaddr*>(&ServerAddress),
 		sizeof(ServerAddress)))
 	{
-		TRACE("错误：连接至服务器失败！\n");
+		ShowMessage("错误：连接至服务器失败！\n");
 		closesocket(pSocket);
 		pSocket = NULL;
 		return false;
@@ -281,7 +279,6 @@ void CClient::Stop()
 	delete[]pWorks;
 	pWorks = NULL;
 	CleanUp(); // 清空资源
-	TRACE("测试停止.\n");
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -320,18 +317,18 @@ CString CClient::GetLocalIP()
 // 在主界面中显示信息
 void CClient::ShowMessage(const CString strInfo, ...)
 {
-	// 根据传入的参数格式化字符串
-	CString strMessage;
-	va_list arglist;
-
-	va_start(arglist, strInfo);
-	strMessage.FormatV(strInfo, arglist);
-	va_end(arglist);
-
 	// 在主界面中显示
-	CMainDlg* pMain = (CMainDlg*)m_pMain;
 	if (m_pMain != NULL)
 	{
+		// 根据传入的参数格式化字符串
+		CString strMessage;
+		va_list arglist;
+
+		va_start(arglist, strInfo);
+		strMessage.FormatV(strInfo, arglist);
+		va_end(arglist);
+
+		CMainDlg* pMain = (CMainDlg*)m_pMain;
 		pMain->AddInformation(strMessage);
 	}
 }

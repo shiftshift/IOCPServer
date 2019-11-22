@@ -199,7 +199,7 @@ void CMainDlg::OnBnClickedOk()
 		AfxMessageBox(_T("Æô¶¯Ê§°Ü£¡"));
 		return;
 	}
-	AddInformation(_T("²âÊÔ¿ªÊ¼"));
+	m_Client.ShowMessage("²âÊÔ¿ªÊ¼");
 	GetDlgItem(IDOK)->EnableWindow(FALSE);
 	GetDlgItem(IDC_STOP)->EnableWindow(TRUE);
 }
@@ -209,11 +209,11 @@ void CMainDlg::OnBnClickedOk()
 //	Í£Ö¹²âÊÔ
 void CMainDlg::OnBnClickedStop()
 {
-	AddInformation(_T("²âÊÔÍ£Ö¹"));
 	// Í£Ö¹
 	m_Client.Stop();
 	GetDlgItem(IDC_STOP)->EnableWindow(FALSE);
 	GetDlgItem(IDOK)->EnableWindow(TRUE);
+	m_Client.ShowMessage("²âÊÔÍ£Ö¹");
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -237,9 +237,12 @@ void CMainDlg::OnDestroy()
 
 LRESULT CMainDlg::OnAddListItem(WPARAM wParam, LPARAM lParam)
 {
-	CString* pStr = ((CString*)lParam);
-	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
-	pList->InsertItem(0, *pStr);
-	delete pStr;
+	if (lParam)
+	{
+		CString* pStr = ((CString*)lParam);
+		CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
+		pList->InsertItem(0, *pStr);
+		//delete pStr;
+	}
 	return 0;
 }

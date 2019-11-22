@@ -40,8 +40,14 @@ public:
 	// 为了减少界面代码对效率的影响，此处使用了内联
 	inline void AddInformation(const CString strInfo)
 	{
-		CString* pStr = new CString(strInfo);
-		PostMessage(WM_ADD_LIST_ITEM, 0, (LPARAM)pStr);
+		DWORD_PTR dwResult = 0;
+		LRESULT lr = ::SendMessageTimeout(m_hWnd, 
+			WM_ADD_LIST_ITEM, 0, (LPARAM)&strInfo,
+			SMTO_ABORTIFHUNG | SMTO_BLOCK, 500, &dwResult);
+		if (!lr)
+		{//ERROR_TIMEOUT=1460L
+			lr = GetLastError();
+		}
 	}
 private:
 	// 初始化界面信息

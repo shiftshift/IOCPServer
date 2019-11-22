@@ -72,7 +72,7 @@ private:
 	// 建立连接
 	bool EstablishConnections();
 	// 向服务器进行连接
-	bool ConnetToServer(SOCKET& pSocket, CString strServer, int nPort);
+	bool ConnectToServer(SOCKET& pSocket, CString strServer, int nPort);
 	// 用于建立连接的线程
 	static DWORD WINAPI _ConnectionThread(LPVOID lpParam);
 	// 用于发送信息的线程
