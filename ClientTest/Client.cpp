@@ -273,7 +273,13 @@ void CClient::Stop()
 		{//等待所有工作线程全部退出
 			Sleep(100);
 		}
-	}	
+	}
+	// 取消所有线程池中的线程
+	CloseThreadpoolCleanupGroupMembers(cleanupGroup, TRUE, NULL);
+	DestroyThreadpoolEnvironment(&te);
+	CloseThreadpool(threadPool);
+	delete[]pWorks;
+	pWorks = NULL;
 	CleanUp(); // 清空资源
 	TRACE("测试停止.\n");
 }
@@ -283,12 +289,6 @@ void CClient::Stop()
 void CClient::CleanUp()
 {
 	if (m_hShutdownEvent == NULL) return;
-	// 取消所有线程池中的线程
-	CloseThreadpoolCleanupGroupMembers(cleanupGroup, TRUE, NULL);
-	DestroyThreadpoolEnvironment(&te);
-	CloseThreadpool(threadPool);
-	delete[]pWorks;
-	pWorks = NULL;
 	//RELEASE_ARRAY(m_phWorkerThreads);
 	//RELEASE_ARRAY(m_pWorkerThreadIds);
 	RELEASE_HANDLE(m_hConnectionThread);
