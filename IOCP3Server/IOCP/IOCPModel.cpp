@@ -53,7 +53,9 @@ DWORD WINAPI CIocpModel::_WorkerThread(LPVOID lpParam)
 		OVERLAPPED* pOverlapped = nullptr;
 		SocketContext* pSoContext = nullptr;
 		const BOOL bRet = GetQueuedCompletionStatus(pIocpModel->m_hIOCompletionPort,
-			&dwBytesTransfered, (PULONG_PTR)&pSoContext, &pOverlapped, INFINITE);
+			&dwBytesTransfered, (PULONG_PTR)&pSoContext, &pOverlapped, INFINITE);		
+		IoContext* pIoContext = CONTAINING_RECORD(pOverlapped, 
+			IoContext, m_Overlapped); // 读取传入的参数
 		//接收EXIT_CODE退出标志，则直接退出
 		if (EXIT_CODE == (DWORD)pSoContext)
 		{
@@ -71,18 +73,15 @@ DWORD WINAPI CIocpModel::_WorkerThread(LPVOID lpParam)
 		}
 		else
 		{
-			// 读取传入的参数
-			IoContext* pIoContext = CONTAINING_RECORD(pOverlapped,
-				IoContext, m_Overlapped);
 			// 判断是否有客户端断开了
 			if ((0 == dwBytesTransfered)
 				&& (OPERATION_TYPE::RECV == pIoContext->m_OpType
 					|| OPERATION_TYPE::SEND == pIoContext->m_OpType))
 			{
 				pIocpModel->OnConnectionClosed(pSoContext);
-				pIocpModel->_ShowMessage("客户端 %s:%d 断开连接",
-					inet_ntoa(pSoContext->m_ClientAddr.sin_addr),
-					ntohs(pSoContext->m_ClientAddr.sin_port));
+				//pIocpModel->_ShowMessage("客户端 %s:%d 断开连接",
+				//	inet_ntoa(pSoContext->m_ClientAddr.sin_addr),
+				//	ntohs(pSoContext->m_ClientAddr.sin_port));
 				// 释放掉对应的资源
 				pIocpModel->_DoClose(pSoContext);
 				continue;
@@ -302,7 +301,7 @@ bool CIocpModel::_InitializeListenSocket()
 	if (NULL == CreateIoCompletionPort((HANDLE)m_pListenContext->m_Socket,
 		m_hIOCompletionPort, (DWORD)m_pListenContext, 0))
 	{
-		this->_ShowMessage("绑定失败！错误代码: %d",
+		this->_ShowMessage("绑定失败！err=%d",
 			WSAGetLastError());
 		this->_DeInitialize();
 		return false;
@@ -336,7 +335,7 @@ bool CIocpModel::_InitializeListenSocket()
 	}
 
 	// 开始进行监听
-	if (SOCKET_ERROR == listen(m_pListenContext->m_Socket, SOMAXCONN))
+	if (SOCKET_ERROR == listen(m_pListenContext->m_Socket, MAX_LISTEN_SOCKET))
 	{
 		this->_ShowMessage("listen()出错, err=%d", WSAGetLastError());
 		this->_DeInitialize();
@@ -436,15 +435,15 @@ bool CIocpModel::_PostAccept(IoContext* pIoContext)
 		_ShowMessage("创建用于Accept的Socket失败！err=%d", WSAGetLastError());
 		return false;
 	}
-	// 投递AcceptEx // 将接收缓冲置为0,令AcceptEx直接返回,防止拒绝服务攻击
-	//https://docs.microsoft.com/zh-cn/windows/win32/api/mswsock/nf-mswsock-acceptex	
-	DWORD dwBytes = 0;
-	WSABUF* pWSAbuf = &pIoContext->m_wsaBuf;
+	//https://docs.microsoft.com/zh-cn/windows/win32/api/mswsock/nf-mswsock-acceptex
+	// 投递AcceptEx // 将接收缓冲置为0,令AcceptEx直接返回,防止拒绝服务攻击	
+	DWORD dwBytes = 0, dwAddrLen = (sizeof(SOCKADDR_IN) + 16);
+	WSABUF* pWSAbuf = &pIoContext->m_wsaBuf; //必须+16,参见MSDN
 	if (!m_lpfnAcceptEx(m_pListenContext->m_Socket,
-		pIoContext->m_sockAccept, pWSAbuf->buf, //0,
-		pWSAbuf->len - ((sizeof(SOCKADDR_IN) + 16) * 2),
-		sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16,
-		&dwBytes, &pIoContext->m_Overlapped))
+		pIoContext->m_sockAccept, pWSAbuf->buf,
+		0, //pWSAbuf->len - (dwAddrLen * 2),
+		dwAddrLen, dwAddrLen, &dwBytes,
+		&pIoContext->m_Overlapped))
 	{
 		int nErr = WSAGetLastError();
 		if (WSA_IO_PENDING != nErr)
@@ -476,27 +475,22 @@ bool CIocpModel::_DoAccept(SocketContext* pSoContext, IoContext* pIoContext)
 {//这里的pSoContext是listenSocketContext
 	InterlockedIncrement(&connectCount);
 	InterlockedDecrement(&acceptPostCount);
-#if 0 //无法得到对方的IP地址呢！
+#if 1 //无法得到对方的IP地址呢！
 	SOCKADDR_IN* clientAddr = NULL, * localAddr = NULL;
-	int remoteLen, localLen, addrLen = sizeof(SOCKADDR_IN);
+	DWORD dwAddrLen = (sizeof(SOCKADDR_IN) + 16);
+	int remoteLen = 0, localLen = 0; //必须+16,参见MSDN
 	this->m_lpfnGetAcceptExSockAddrs(pIoContext->m_wsaBuf.buf,
-		pIoContext->m_wsaBuf.len - ((addrLen + 16) * 2),
-		addrLen + 16, addrLen + 16, (LPSOCKADDR*)&localAddr,
+		0, //pIoContext->m_wsaBuf.len - (dwAddrLen * 2),
+		dwAddrLen, dwAddrLen, (LPSOCKADDR*)&localAddr,
 		&localLen, (LPSOCKADDR*)&clientAddr, &remoteLen);
-	if (remoteLen < addrLen)
-	{
-		remoteLen = addrLen; //_Inout_
-		addrLen = getpeername(pIoContext->m_sockAccept,
-			(SOCKADDR*)&clientAddr, &remoteLen);
-	}
 
 	// 2. 为新连接建立一个SocketContext 
 	SocketContext* pNewSocketContext = new SocketContext;
 	//加入到ContextList中去(需要统一管理，方便释放资源)
 	this->_AddToContextList(pNewSocketContext);
 	pNewSocketContext->m_Socket = pIoContext->m_sockAccept;
-	memcpy_s(&(pNewSocketContext->m_ClientAddr), sizeof(SOCKADDR_IN),
-		&clientAddr, sizeof(SOCKADDR_IN));
+	memcpy(&(pNewSocketContext->m_ClientAddr), 
+		clientAddr, sizeof(SOCKADDR_IN));
 
 	// 3. 将listenSocketContext的IOContext 重置后继续投递AcceptEx
 	if (!_PostAccept(pIoContext))
@@ -536,7 +530,7 @@ bool CIocpModel::_DoAccept(SocketContext* pSoContext, IoContext* pIoContext)
 		// 投递recv请求
 		return _PostRecv(pNewSocketContext, pNewIoContext);
 	}
-	else 
+	else
 	{
 		_DoClose(pNewSocketContext);
 		return false;
@@ -695,8 +689,8 @@ bool CIocpModel::_DoRecv(SocketContext* pSoContext, IoContext* pIoContext)
 {
 	// 先把上一次的数据显示出现，然后就重置状态，发出下一个Recv请求
 	SOCKADDR_IN* clientAddr = &pSoContext->m_ClientAddr;
-	this->_ShowMessage("收到 %s:%d 信息：%s", inet_ntoa(clientAddr->sin_addr),
-		ntohs(clientAddr->sin_port), pIoContext->m_wsaBuf.buf);
+	//this->_ShowMessage("收到 %s:%d 信息：%s", inet_ntoa(clientAddr->sin_addr),
+	//	ntohs(clientAddr->sin_port), pIoContext->m_wsaBuf.buf);
 	// 然后开始投递下一个WSARecv请求 //发送数据
 	//这里不应该直接PostWrite，发什么应该由应用决定
 	this->OnRecvCompleted(pSoContext, pIoContext);
@@ -907,9 +901,12 @@ bool CIocpModel::HandleError(SocketContext* pSoContext, const DWORD& dwErr)
 	// 可能是客户端异常退出了; 0x40=64L
 	else if (ERROR_NETNAME_DELETED == dwErr)
 	{// 出这个错，可能是监听SOCKET挂掉了
-		this->_ShowMessage("检测到客户端异常退出！");
+		//this->_ShowMessage("检测到客户端异常退出！");
 		this->OnConnectionError(pSoContext, dwErr);
-		this->_DoClose(pSoContext);
+		if (!this->_DoClose(pSoContext))
+		{
+			this->_ShowMessage("检测到异常！");
+		}
 		return true;
 	}
 	else
