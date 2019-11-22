@@ -1,6 +1,6 @@
 #include "StdAfx.h"
 #include "Client.h"
-#include "MainDlg.h"
+//#include "MainDlg.h"
 #include <WinSock2.h>
 #pragma comment(lib,"ws2_32.lib")
 
@@ -13,7 +13,7 @@ CClient::CClient(void) :
 	m_strServerIP(DEFAULT_IP),
 	m_strLocalIP(DEFAULT_IP),
 	m_nThreads(DEFAULT_THREADS),
-	m_pMain(NULL),
+	//m_pMain(NULL),
 	m_nPort(DEFAULT_PORT),
 	m_strMessage(DEFAULT_MESSAGE),
 	//m_phWorkerThreads(NULL),
@@ -315,20 +315,17 @@ CString CClient::GetLocalIP()
 
 /////////////////////////////////////////////////////////////////////
 // 在主界面中显示信息
-void CClient::ShowMessage(const CString strInfo, ...)
+void CClient::ShowMessage(const char* szFormat, ...)
 {
-	// 在主界面中显示
-	if (m_pMain != NULL)
+	if (m_LogFunc)
 	{
-		// 根据传入的参数格式化字符串
-		CString strMessage;
+		char buff[256] = { 0 };
 		va_list arglist;
-
-		va_start(arglist, strInfo);
-		strMessage.FormatV(strInfo, arglist);
+		// 处理变长参数
+		va_start(arglist, szFormat);
+		vsnprintf(buff, sizeof(buff), szFormat, arglist);
 		va_end(arglist);
 
-		CMainDlg* pMain = (CMainDlg*)m_pMain;
-		pMain->AddInformation(strMessage);
+		m_LogFunc(string(buff));
 	}
 }

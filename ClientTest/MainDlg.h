@@ -2,6 +2,7 @@
 #pragma once
 #include "Client.h"
 
+#define MAX_LIST_ITEM_COUNT 1000
 #define WM_ADD_LIST_ITEM (WM_USER + 100)  
 
 // CMainDlg 对话框
@@ -35,25 +36,13 @@ protected:
 	afx_msg LRESULT OnAddListItem(WPARAM wParam, LPARAM lParam);
 	DECLARE_MESSAGE_MAP()
 
-public:
-	// 为主界面添加信息信息(在类CIocpModel中调用)
-	// 为了减少界面代码对效率的影响，此处使用了内联
-	inline void AddInformation(const CString strInfo)
-	{
-		DWORD_PTR dwResult = 0;
-		LRESULT lr = ::SendMessageTimeout(m_hWnd, 
-			WM_ADD_LIST_ITEM, 0, (LPARAM)&strInfo,
-			SMTO_ABORTIFHUNG | SMTO_BLOCK, 500, &dwResult);
-		if (!lr)
-		{//ERROR_TIMEOUT=1460L
-			lr = GetLastError();
-		}
-	}
 private:
 	// 初始化界面信息
 	void InitGUI();
 	// 初始化List控件
 	void InitListCtrl();
+	// 为主界面添加信息信息(在类CIocpModel中调用)
+	static void AddInformation(const string& strInfo);
 
 private:
 	CClient m_Client; // 客户端连接对象

@@ -135,6 +135,7 @@ HCURSOR CMainDlg::OnQueryDragIcon()
 
 //////////////////////////////////////////////////////////////////////
 // 初始化界面信息
+HWND g_hWnd = 0;
 void CMainDlg::InitGUI()
 {
 	// 初始化Socket库
@@ -156,7 +157,43 @@ void CMainDlg::InitGUI()
 	// 初始化列表
 	this->InitListCtrl();
 	// 设置主界面指针
-	m_Client.SetMainDlg(this);
+	//m_Client.SetMainDlg(this);
+	g_hWnd = this->m_hWnd;
+	LPVOID pfn = (LPVOID)AddInformation;
+	m_Client.SetLogFunc((LOG_FUNC)pfn);
+}
+
+void CMainDlg::AddInformation(const string& strInfo)
+{
+	if (g_hWnd)
+	{
+		DWORD_PTR dwResult = 0;
+		LRESULT lr = ::SendMessageTimeout(g_hWnd,
+			WM_ADD_LIST_ITEM, 0, (LPARAM)&strInfo,
+			SMTO_ABORTIFHUNG | SMTO_NORMAL, //| SMTO_BLOCK,
+			500, &dwResult);
+		if (!lr)
+		{//ERROR_TIMEOUT=1460L
+			lr = GetLastError();
+		}
+	}
+}
+
+LRESULT CMainDlg::OnAddListItem(WPARAM wParam, LPARAM lParam)
+{
+	if (lParam)
+	{
+		string* pStr = ((string*)lParam);
+		CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
+		int count = pList->GetItemCount();
+		while (count > MAX_LIST_ITEM_COUNT)
+		{//列表框内容太多，肯定会出问题的
+			pList->DeleteItem(--count);
+		}
+		pList->InsertItem(0, (*pStr).c_str());
+		//delete pStr;
+	}
+	return 0;
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -233,16 +270,4 @@ void CMainDlg::OnDestroy()
 {
 	OnBnClickedCancel();
 	CDialog::OnDestroy();
-}
-
-LRESULT CMainDlg::OnAddListItem(WPARAM wParam, LPARAM lParam)
-{
-	if (lParam)
-	{
-		CString* pStr = ((CString*)lParam);
-		CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
-		pList->InsertItem(0, *pStr);
-		//delete pStr;
-	}
-	return 0;
 }

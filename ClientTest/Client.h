@@ -7,6 +7,8 @@ Notes:
  如果需要可以修改成发送多次数据的情况
 ==========================================================================*/
 #pragma once
+#include <string>
+using std::string;
 // 屏蔽deprecation警告
 #pragma warning(disable: 4996)
 // 缓冲区长度(8*1024字节)
@@ -16,6 +18,7 @@ Notes:
 #define DEFAULT_THREADS 10000 // 默认并发线程数
 #define DEFAULT_TIMES 10000 // 默认发送次数
 #define DEFAULT_MESSAGE _T("Hello!") // 默认的发送信息
+typedef void (*LOG_FUNC)(const string& strInfo);
 
 class CClient;
 
@@ -64,9 +67,7 @@ public:
 	// 设置要按发送的信息
 	void SetMessage(const CString& strMessage) { m_strMessage = strMessage; }
 	// 设置主界面的指针，用于调用其函数
-	void SetMainDlg(CDialog* p) { m_pMain = p; }
-	// 在主界面中显示信息
-	void ShowMessage(const CString strInfo, ...);
+	//void SetMainDlg(CDialog* p) { m_pMain = p; }
 
 private:
 	// 建立连接
@@ -81,7 +82,7 @@ private:
 	void CleanUp();
 
 private:
-	CDialog* m_pMain; // 界面指针
+	//CDialog* m_pMain; // 界面指针
 	CString m_strServerIP; // 服务器端的IP地址
 	CString m_strLocalIP; // 本机IP地址
 	CString m_strMessage; // 发给服务器的信息
@@ -104,4 +105,11 @@ private:
 		_Inout_ PTP_CALLBACK_INSTANCE Instance,
 		_Inout_opt_ PVOID Context,
 		_Inout_ PTP_WORK Work);
+		
+public:
+	// 在主界面中显示信息
+	void ShowMessage(const char* szFormat, ...);
+	void SetLogFunc(LOG_FUNC fn) { m_LogFunc = fn; }
+protected:
+	LOG_FUNC m_LogFunc;
 };
