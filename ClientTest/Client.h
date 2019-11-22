@@ -67,7 +67,7 @@ public:
 	// 设置要按发送的信息
 	void SetMessage(const CString& strMessage) { m_strMessage = strMessage; }
 	// 设置主界面的指针，用于调用其函数
-	//void SetMainDlg(CDialog* p) { m_pMain = p; }
+	void SetMainDlg(CDialog* p) { m_pMain = p; }
 
 private:
 	// 建立连接
@@ -82,8 +82,8 @@ private:
 	void CleanUp();
 
 private:
-	LOG_FUNC m_LogFunc;
-	//CDialog* m_pMain; // 界面指针
+	//LOG_FUNC m_LogFunc;
+	CDialog* m_pMain; // 界面指针
 	CString m_strServerIP; // 服务器端的IP地址
 	CString m_strLocalIP; // 本机IP地址
 	CString m_strMessage; // 发给服务器的信息
@@ -110,5 +110,5 @@ private:
 public:
 	// 在主界面中显示信息
 	void ShowMessage(const char* szFormat, ...);
-	void SetLogFunc(LOG_FUNC fn) { m_LogFunc = fn; }
+	//void SetLogFunc(LOG_FUNC fn) { m_LogFunc = fn; }
 };

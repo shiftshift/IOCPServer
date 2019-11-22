@@ -301,7 +301,7 @@ bool CIocpModel::_InitializeListenSocket()
 	if (NULL == CreateIoCompletionPort((HANDLE)m_pListenContext->m_Socket,
 		m_hIOCompletionPort, (DWORD)m_pListenContext, 0))
 	{
-		this->_ShowMessage("°ó¶¨Ê§°Ü£¡´íÎó´úÂë: %d",
+		this->_ShowMessage("°ó¶¨Ê§°Ü£¡err=%d",
 			WSAGetLastError());
 		this->_DeInitialize();
 		return false;

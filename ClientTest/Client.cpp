@@ -1,6 +1,6 @@
 #include "StdAfx.h"
 #include "Client.h"
-//#include "MainDlg.h"
+#include "MainDlg.h"
 #include <WinSock2.h>
 #pragma comment(lib,"ws2_32.lib")
 
@@ -13,7 +13,7 @@ CClient::CClient(void) :
 	m_strServerIP(DEFAULT_IP),
 	m_strLocalIP(DEFAULT_IP),
 	m_nThreads(DEFAULT_THREADS),
-	//m_pMain(NULL),
+	m_pMain(NULL),
 	m_nPort(DEFAULT_PORT),
 	m_strMessage(DEFAULT_MESSAGE),
 	//m_phWorkerThreads(NULL),
@@ -21,7 +21,7 @@ CClient::CClient(void) :
 	m_hConnectionThread(NULL),
 	m_hShutdownEvent(NULL)
 {
-	m_LogFunc = NULL;
+	//m_LogFunc = NULL;
 }
 
 CClient::~CClient(void)
@@ -48,11 +48,10 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 {
 	WorkerThreadParam* pParams = (WorkerThreadParam*)lpParam;
 	CClient* pClient = (CClient*)pParams->pClient;
-	char szTemp[MAX_BUFFER_LEN] = { 0 };
-	char szRecv[MAX_BUFFER_LEN] = { 0 };
-	int nBytesSent = 0;
-	int nBytesRecv = 0;
+	char* pTemp = new char[MAX_BUFFER_LEN];
+	int nBytesSent = 0, nBytesRecv = 0;
 
+	ASSERT(pTemp != NULL); //认为内存足够
 	InterlockedIncrement(&pClient->m_nRunningWorkerThreads);
 	for (int i = 1; i <= pParams->nSendTimes; i++)
 	{
@@ -62,21 +61,20 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 		{
 			break; /// return true;
 		}
-		memset(szRecv, 0, sizeof(szRecv));
-		memset(szTemp, 0, sizeof(szTemp));
+		memset(pTemp, 0, MAX_BUFFER_LEN);
 		// 向服务器发送信息
-		snprintf(szTemp, sizeof(szTemp) - 1,
+		snprintf(pTemp, MAX_BUFFER_LEN - 1,
 			("Msg:[%d] Thread:[%d], Data:[%s]"),
 			i, pParams->nThreadNo, pParams->szSendBuffer);
-		nBytesSent = send(pParams->sock, szTemp, strlen(szTemp), 0);
+		nBytesSent = send(pParams->sock, pTemp, strlen(pTemp), 0);
 		if (SOCKET_ERROR == nBytesSent)
 		{
 			pClient->ShowMessage("send ERROR: ErrCode=[%ld]\n", WSAGetLastError());
 			break; /// return 1;
 		}
-		pClient->ShowMessage("SENT: %s", szTemp);
+		pClient->ShowMessage("SENT: %s", pTemp);
 
-		memset(szTemp, 0, sizeof(szTemp));
+		memset(pTemp, 0, MAX_BUFFER_LEN);
 		memset(pParams->szRecvBuffer, 0, MAX_BUFFER_LEN);
 		nBytesRecv = recv(pParams->sock, pParams->szRecvBuffer,
 			MAX_BUFFER_LEN, 0);
@@ -86,10 +84,10 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 			break; /// return 1;
 		}
 		pParams->szRecvBuffer[nBytesRecv] = 0;
-		snprintf(szTemp, sizeof(szTemp) - 1,
+		snprintf(pTemp, MAX_BUFFER_LEN - 1,
 			("RECV: Msg:[%d] Thread[%d], Data[%s]"),
 			i, pParams->nThreadNo, pParams->szRecvBuffer);
-		pClient->ShowMessage(szTemp);
+		pClient->ShowMessage(pTemp);
 		Sleep(100);
 	}
 
@@ -108,14 +106,15 @@ DWORD WINAPI CClient::_WorkerThread(LPVOID lpParam)
 		}
 	}*/
 	InterlockedDecrement(&pClient->m_nRunningWorkerThreads);
+	delete[]pTemp;
 	return 0;
 }
 
 void NTAPI CClient::poolThreadWork(
 	_Inout_ PTP_CALLBACK_INSTANCE Instance,
-	_Inout_opt_ PVOID Context, _Inout_ PTP_WORK Work)
+	_Inout_opt_ PVOID lpParam, _Inout_ PTP_WORK Work)
 {
-	_WorkerThread(Context);
+	_WorkerThread(lpParam);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -136,7 +135,7 @@ bool CClient::EstablishConnections()
 	threadPool = CreateThreadpool(NULL);
 	BOOL bRet = SetThreadpoolThreadMinimum(threadPool, 2);
 	SetThreadpoolThreadMaximum(threadPool, m_nThreads);
-	SetThreadpoolCallbackPool(&te, threadPool);	
+	SetThreadpoolCallbackPool(&te, threadPool);
 	cleanupGroup = CreateThreadpoolCleanupGroup();
 	SetThreadpoolCallbackCleanupGroup(&te, cleanupGroup, NULL);
 	pWorks = new PTP_WORK[m_nThreads];
@@ -189,7 +188,7 @@ bool CClient::ConnectToServer(SOCKET& pSocket, CString strServer, int nPort)
 	pSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (INVALID_SOCKET == pSocket)
 	{
-		ShowMessage("错误：初始化Socket失败，错误信息：%d\n",
+		ShowMessage("初始化Socket失败，err=%d\n",
 			WSAGetLastError());
 		pSocket = NULL;
 		return false;
@@ -198,7 +197,7 @@ bool CClient::ConnectToServer(SOCKET& pSocket, CString strServer, int nPort)
 	Server = gethostbyname(strServer.GetString());
 	if (Server == NULL)
 	{
-		ShowMessage("错误：无效的服务器地址.\n");
+		ShowMessage("无效的服务器地址.\n");
 		closesocket(pSocket);
 		pSocket = NULL;
 		return false;
@@ -213,7 +212,8 @@ bool CClient::ConnectToServer(SOCKET& pSocket, CString strServer, int nPort)
 		reinterpret_cast<const struct sockaddr*>(&ServerAddress),
 		sizeof(ServerAddress)))
 	{
-		ShowMessage("错误：连接至服务器失败！\n");
+		ShowMessage("连接至服务器失败！err=%d\n",
+			WSAGetLastError());
 		closesocket(pSocket);
 		pSocket = NULL;
 		return false;
@@ -322,15 +322,20 @@ CString CClient::GetLocalIP()
 // 在主界面中显示信息
 void CClient::ShowMessage(const char* szFormat, ...)
 {
-	if (this->m_LogFunc)
+	//if (this->m_LogFunc)
 	{
-		char buff[256] = { 0 };
+		const int BUFF_LEN = 256;
+		char* pBuff = new char[BUFF_LEN];
+		ASSERT(pBuff != NULL);
+		memset(pBuff, 0, BUFF_LEN);
 		va_list arglist;
 		// 处理变长参数
 		va_start(arglist, szFormat);
-		vsnprintf(buff, sizeof(buff) - 1, szFormat, arglist);
+		vsnprintf(pBuff, BUFF_LEN - 1, szFormat, arglist);
 		va_end(arglist);
 
-		this->m_LogFunc(string(buff));
+		//this->m_LogFunc(string(pBuff));
+		CMainDlg::AddInformation(string(pBuff));
+		delete []pBuff;
 	}
 }

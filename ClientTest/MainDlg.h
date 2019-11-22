@@ -41,6 +41,7 @@ private:
 	void InitGUI();
 	// 初始化List控件
 	void InitListCtrl();
+public:
 	// 为主界面添加信息信息(在类CIocpModel中调用)
 	static void AddInformation(const string& strInfo);
 

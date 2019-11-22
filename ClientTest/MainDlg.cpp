@@ -156,11 +156,12 @@ void CMainDlg::InitGUI()
 	SetDlgItemText(IDC_EDIT_MESSAGE, DEFAULT_MESSAGE);
 	// 初始化列表
 	this->InitListCtrl();
-	// 设置主界面指针
-	//m_Client.SetMainDlg(this);
+	// 日志信息的处理
 	g_hWnd = this->m_hWnd;
-	LPVOID pfn = (LPVOID)AddInformation;
-	m_Client.SetLogFunc((LOG_FUNC)pfn);
+	//LPVOID pfn = (LPVOID)AddInformation;
+	//m_Client.SetLogFunc((LOG_FUNC)pfn);
+	// 设置主界面指针
+	m_Client.SetMainDlg(this);
 }
 
 void CMainDlg::AddInformation(const string& strInfo)
