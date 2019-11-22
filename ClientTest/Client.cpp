@@ -128,6 +128,7 @@ bool CClient::EstablishConnections()
 	//m_pWorkerThreadIds = new DWORD[m_nThreads];
 	//memset(m_phWorkerThreads, 0, sizeof(HANDLE) * m_nThreads);
 	m_pWorkerParams = new WorkerThreadParam[m_nThreads];
+	ASSERT(m_pWorkerParams != 0);
 	memset(m_pWorkerParams, 0, sizeof(WorkerThreadParam) * m_nThreads);
 
 	// 初始化线程池
@@ -139,6 +140,7 @@ bool CClient::EstablishConnections()
 	cleanupGroup = CreateThreadpoolCleanupGroup();
 	SetThreadpoolCallbackCleanupGroup(&te, cleanupGroup, NULL);
 	pWorks = new PTP_WORK[m_nThreads];
+	ASSERT(pWorks != 0);
 
 	// 根据用户设置的线程数量，生成每一个线程连接至服务器，并生成线程发送数据
 	for (int i = 0; i < m_nThreads; i++)
