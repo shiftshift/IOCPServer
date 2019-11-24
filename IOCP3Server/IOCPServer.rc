@@ -52,8 +52,8 @@ BEGIN
     "#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)\r\n"
     "LANGUAGE 4, 2\r\n"
     "#pragma code_page(936)\r\n"
-    "#include ""res\\ClientTest.rc2""  // 非 Microsoft Visual C++ 编辑的资源\r\n"
-    "#include ""l.CHS\\afxres.rc""      // 标准组件\r\n"
+    "#include ""res\\IOCPServer.rc2""  // ?¤? Microsoft Visual C++ ?à¨¤?-|ì??á¨o???\r\n"
+    "#include ""l.CHS\\afxres.rc""      // ?à¨o?á??á¨|?t\r\n"
     "#endif\r\n"
     "\0"
 END
@@ -68,7 +68,7 @@ END
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDR_MAINFRAME           ICON                    "res\\ClientTest.ico"
+IDR_MAINFRAME           ICON                    "res\\IOCPServer.ico"
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -78,36 +78,29 @@ IDR_MAINFRAME           ICON                    "res\\ClientTest.ico"
 
 IDD_ABOUTBOX DIALOGEX 0, 0, 170, 62
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "关于 ClientTest"
+CAPTION "关于IOCP Server Example"
 FONT 9, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    ICON            IDR_MAINFRAME,IDC_STATIC,14,14,21,20
-    LTEXT           "ClientTest，1.0 版",IDC_STATIC,42,14,114,8,SS_NOPREFIX
-    LTEXT           "Copyright (C) 2009",IDC_STATIC,42,26,114,8
+    ICON            IDR_MAINFRAME,IDC_STATIC,14,14,20,20
+    LTEXT           "IOCP Server Example，1.0 版",IDC_STATIC,42,14,114,8,SS_NOPREFIX
+    LTEXT           "Copyright (C) 2019",IDC_STATIC,42,26,114,8
     DEFPUSHBUTTON   "确定",IDOK,113,41,50,14,WS_GROUP
 END
 
-IDD_CLIENT_DIALOG DIALOGEX 0, 0, 319, 238
+IDD_SERVER_DIALOG DIALOGEX 0, 0, 334, 213
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_MINIMIZEBOX | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_APPWINDOW
-CAPTION "服务器压力测试工具"
+CAPTION "IOCP Server"
 FONT 9, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "开始测试",IDOK,59,217,50,14
-    PUSHBUTTON      "退出",IDCANCEL,217,217,50,14
-    PUSHBUTTON      "停止测试",IDC_STOP,139,217,50,14,WS_DISABLED
-    CONTROL         "",IDC_LIST_INFO,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,7,68,305,141
-    CTEXT           "服务器IP：",IDC_STATIC,19,20,35,8
-    RTEXT           "端口：",IDC_STATIC,135,20,22,8
-    EDITTEXT        IDC_EDIT_PORT,157,18,40,14,ES_AUTOHSCROLL
-    CONTROL         "",IDC_IPADDRESS_SERVER,"SysIPAddress32",WS_TABSTOP,55,17,71,15
-    RTEXT           "并发线程数：",IDC_STATIC,215,20,42,8
-    RTEXT           "重复发送次数：",IDC_STATIC,201,42,56,8
-    CTEXT           "发送信息：",IDC_STATIC,19,42,35,8
-    EDITTEXT        IDC_EDIT_TIMES,258,39,40,14,ES_AUTOHSCROLL
-    EDITTEXT        IDC_EDIT_THREADS,258,18,40,14,ES_AUTOHSCROLL
-    EDITTEXT        IDC_EDIT_MESSAGE,55,39,142,14,ES_AUTOHSCROLL
-    GROUPBOX        "参数设置",IDC_STATIC,7,5,305,57
+    DEFPUSHBUTTON   "开始监听",IDOK,59,192,50,14
+    PUSHBUTTON      "退出",IDCANCEL,221,192,50,14
+    LTEXT           "服务器IP地址：",IDC_STATIC,38,169,49,8
+    LTEXT           "127.0.0.1",IDC_STATIC_SERVERIP,88,170,49,8
+    PUSHBUTTON      "停止监听",IDC_STOP,139,192,50,14,WS_DISABLED
+    CONTROL         "",IDC_LIST_INFO,"SysListView32",LVS_REPORT | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,7,7,320,157
+    CONTROL         "监听端口：",IDC_STATIC,"Static",SS_SIMPLE | WS_GROUP,202,171,34,8
+    EDITTEXT        IDC_EDIT_PORT,238,168,40,14,ES_AUTOHSCROLL
 END
 
 
@@ -134,12 +127,12 @@ BEGIN
         BLOCK "080403a8"
         BEGIN
             VALUE "CompanyName", "<杭州山不高>"
-            VALUE "FileDescription", "服务器压力测试工具！"
-            VALUE "FileVersion", "1.0.1.0"
-            VALUE "InternalName", "ClientTest.exe"
-            VALUE "LegalCopyright", "(C) <GaoJS>。保留所有权利。"
-            VALUE "OriginalFilename", "ClientTest.exe"
-            VALUE "ProductName", "服务器压力测试工具"
+            VALUE "FileDescription", "演示IOCP Server 功能"
+            VALUE "FileVersion", "1.0.0.1"
+            VALUE "InternalName", "IOCPServer.exe"
+            VALUE "LegalCopyright", "TODO: (C) <公司名>。保留所有权利。"
+            VALUE "OriginalFilename", "IOCPServer.exe"
+            VALUE "ProductName", "<IOCP Server>"
             VALUE "ProductVersion", "1.0.0.1"
         END
     END
@@ -166,12 +159,12 @@ BEGIN
         BOTTOMMARGIN, 55
     END
 
-    IDD_CLIENT_DIALOG, DIALOG
+    IDD_SERVER_DIALOG, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 312
+        RIGHTMARGIN, 327
         TOPMARGIN, 7
-        BOTTOMMARGIN, 231
+        BOTTOMMARGIN, 206
     END
 END
 #endif    // APSTUDIO_INVOKED
@@ -182,7 +175,7 @@ END
 // AFX_DIALOG_LAYOUT
 //
 
-IDD_CLIENT_DIALOG AFX_DIALOG_LAYOUT
+IDD_SERVER_DIALOG AFX_DIALOG_LAYOUT
 BEGIN
     0
 END
@@ -195,7 +188,7 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_ABOUTBOX            "关于 ClientTest(&A)..."
+    IDS_ABOUTBOX            "关于 IOCPServer(&A)..."
 END
 
 #endif    // 中文(简体，中国) resources
@@ -216,8 +209,8 @@ END
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHS)
 LANGUAGE 4, 2
 #pragma code_page(936)
-#include "res\ClientTest.rc2"  // 非 Microsoft Visual C++ 编辑的资源
-#include "l.CHS\afxres.rc"      // 标准组件
+#include "res\IOCPServer.rc2"  // ?¤? Microsoft Visual C++ ?à¨¤?-|ì??á¨o???
+#include "l.CHS\afxres.rc"      // ?à¨o?á??á¨|?t
 #endif
 
 /////////////////////////////////////////////////////////////////////////////

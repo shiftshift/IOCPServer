@@ -1,11 +1,12 @@
-// MainDlg.cpp : 实现文件
-#include "stdafx.h"
-#include "ClientTest.h"
+#include "StdAfx.h"
+#include "IOCPServer.h"
 #include "MainDlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
+
+HWND g_hWnd = NULL;
 
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 class CAboutDlg : public CDialog
@@ -19,11 +20,12 @@ public:
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);
 
+// 实现
 protected:
 	DECLARE_MESSAGE_MAP()
 };
 
-CAboutDlg::CAboutDlg() : CDialog(CAboutDlg::IDD)
+CAboutDlg::CAboutDlg(): CDialog(CAboutDlg::IDD)
 {
 }
 
@@ -57,6 +59,7 @@ BEGIN_MESSAGE_MAP(CMainDlg, CDialog)
 	ON_BN_CLICKED(IDCANCEL, &CMainDlg::OnBnClickedCancel)
 	ON_MESSAGE(WM_ADD_LIST_ITEM, OnAddListItem)
 	ON_WM_DESTROY()
+	ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
 // CMainDlg 消息处理程序
@@ -83,7 +86,7 @@ BOOL CMainDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// 设置大图标
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 	// 初始化界面信息
-	this->InitGUI();
+	this->Init();
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -108,7 +111,7 @@ void CMainDlg::OnPaint()
 	if (IsIconic())
 	{
 		CPaintDC dc(this); // 用于绘制的设备上下文
-		SendMessage(WM_ICONERASEBKGND,
+		SendMessage(WM_ICONERASEBKGND, 
 			reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
 		// 使图标在工作区矩形中居中
 		int cxIcon = GetSystemMetrics(SM_CXICON);
@@ -134,70 +137,50 @@ HCURSOR CMainDlg::OnQueryDragIcon()
 }
 
 //////////////////////////////////////////////////////////////////////
-// 初始化界面信息
-HWND g_hWnd = 0;
-void CMainDlg::InitGUI()
+// 初始化Socket库以及界面信息
+void CMainDlg::Init()
 {
 	// 初始化Socket库
-	if (false == m_Client.LoadSocketLib())
+	if (!m_IOCP.LoadSocketLib())
 	{
 		AfxMessageBox(_T("加载Winsock 2.2失败，服务器端无法运行！"));
 		PostQuitMessage(0);
 	}
+
 	// 设置本机IP地址
-	SetDlgItemText(IDC_IPADDRESS_SERVER, m_Client.GetLocalIP());
+	SetDlgItemText(IDC_STATIC_SERVERIP, m_IOCP.GetLocalIP().c_str());
 	// 设置默认端口
 	SetDlgItemInt(IDC_EDIT_PORT, DEFAULT_PORT);
-	// 设置默认的并发线程发送次数
-	SetDlgItemInt(IDC_EDIT_TIMES, DEFAULT_TIMES);
-	// 设置默认的并发线程数
-	SetDlgItemInt(IDC_EDIT_THREADS, DEFAULT_THREADS);
-	// 设置默认发送信息
-	SetDlgItemText(IDC_EDIT_MESSAGE, DEFAULT_MESSAGE);
 	// 初始化列表
 	this->InitListCtrl();
-	// 日志信息的处理
 	g_hWnd = this->m_hWnd;
-	//LPVOID pfn = (LPVOID)AddInformation;
-	//m_Client.SetLogFunc((LOG_FUNC)pfn);
-	// 设置主界面指针
-	m_Client.SetMainDlg(this);
+	LPVOID pfn = (LPVOID)AddInformation;
+	m_IOCP.SetLogFunc((LOG_FUNC)pfn);
 }
 
-void CMainDlg::AddInformation(const string& strInfo)
+///////////////////////////////////////////////////////////////////////
+//	开始监听
+void CMainDlg::OnBnClickedOk()
 {
-	int len = strInfo.size();
-	if (g_hWnd && len > 0)
+	if (!m_IOCP.Start())
 	{
-		char* pStr = new char[len +1];
-		if (pStr)
-		{
-			memset(pStr, 0, len + 1);
-			strncpy(pStr, strInfo.c_str(), len);		
-			if (!::PostMessage(g_hWnd, WM_ADD_LIST_ITEM, 
-				0, (LPARAM)pStr))
-			{
-				delete[]pStr;
-			}
-		}
+		AfxMessageBox(_T("服务器启动失败！"));
+		return;
 	}
+
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
+	pList->DeleteAllItems();
+	GetDlgItem(IDOK)->EnableWindow(FALSE);
+	GetDlgItem(IDC_STOP)->EnableWindow(TRUE);
 }
 
-LRESULT CMainDlg::OnAddListItem(WPARAM wParam, LPARAM lParam)
+//////////////////////////////////////////////////////////////////////
+//	结束监听
+void CMainDlg::OnBnClickedStop()
 {
-	if (lParam)
-	{
-		char* pStr = ((char*)lParam);
-		CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
-		int count = pList->GetItemCount();
-		while (count > MAX_LIST_ITEM_COUNT)
-		{//列表框内容太多，肯定会出问题的
-			pList->DeleteItem(--count);
-		}
-		pList->InsertItem(0, pStr);
-		delete []pStr;
-	}
-	return 0;
+	m_IOCP.Stop();
+	GetDlgItem(IDC_STOP)->EnableWindow(FALSE);
+	GetDlgItem(IDOK)->EnableWindow(TRUE);
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -210,68 +193,38 @@ void CMainDlg::InitListCtrl()
 }
 
 ///////////////////////////////////////////////////////////////////////
-// 开始测试
-void CMainDlg::OnBnClickedOk()
-{
-	int nPort = GetDlgItemInt(IDC_EDIT_PORT);
-	int nTimes = GetDlgItemInt(IDC_EDIT_TIMES);
-	int nThreads = GetDlgItemInt(IDC_EDIT_THREADS);
-	CString strIP, strMessage;
-	GetDlgItemText(IDC_IPADDRESS_SERVER, strIP);
-	GetDlgItemText(IDC_EDIT_MESSAGE, strMessage);
-	if (strIP == _T("") || strMessage == _T("")
-		|| nPort <= 0 || nThreads <= 0)
-	{
-		AfxMessageBox(_T("请输入合法的参数！"));
-		return;
-	}
-	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
-	pList->DeleteAllItems();
-
-	// 给CClient设置参数
-	m_Client.SetIP(strIP);
-	m_Client.SetPort(nPort);
-	m_Client.SetTimes(nTimes);
-	m_Client.SetThreads(nThreads);
-	m_Client.SetMessage(strMessage);
-	// 开始
-	if (!m_Client.Start())
-	{
-		AfxMessageBox(_T("启动失败！"));
-		return;
-	}
-	m_Client.ShowMessage("测试开始");
-	GetDlgItem(IDOK)->EnableWindow(FALSE);
-	GetDlgItem(IDC_STOP)->EnableWindow(TRUE);
-}
-
-
-//////////////////////////////////////////////////////////////////////
-//	停止测试
-void CMainDlg::OnBnClickedStop()
-{
-	// 停止
-	m_Client.Stop();
-	GetDlgItem(IDC_STOP)->EnableWindow(FALSE);
-	GetDlgItem(IDOK)->EnableWindow(TRUE);
-	m_Client.ShowMessage("测试停止");
-}
-
-/////////////////////////////////////////////////////////////////////
-//	退出
+//	点击“退出”的时候，停止监听，清空Socket类库
 void CMainDlg::OnBnClickedCancel()
 {
 	// 停止监听
-	m_Client.Stop();
-	// 卸载Socket库
-	m_Client.UnloadSocketLib();
-	OnCancel();
+	m_IOCP.Stop();
+	m_IOCP.UnloadSocketLib();
+	CDialog::OnCancel();
 }
 
-//////////////////////////////////////////////////////////////////////
-//	对话框销毁时，彻底释放资源
+///////////////////////////////////////////////////////////////////////
+//	系统退出的时候，为确保资源释放，停止监听，清空Socket类库
 void CMainDlg::OnDestroy()
 {
 	OnBnClickedCancel();
 	CDialog::OnDestroy();
+}
+
+LRESULT CMainDlg::OnAddListItem(WPARAM wParam, LPARAM lParam)
+{
+	string* pStr = ((string*)lParam);
+	CListCtrl* pList = (CListCtrl*)GetDlgItem(IDC_LIST_INFO);
+	pList->InsertItem(0, (*pStr).c_str());
+	delete pStr;
+	return 0;
+}
+
+void CMainDlg::AddInformation(const string& strInfo)
+{
+	if (g_hWnd)
+	{
+		string* pStr = new string(strInfo);
+		::PostMessage(g_hWnd, WM_ADD_LIST_ITEM, 0,
+			(LPARAM)pStr);
+	}
 }
